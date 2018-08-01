@@ -14,7 +14,7 @@
  * SP
  * PC
  */
-struct cpu_state
+struct gb_state
 {
 	union {
 		uint16_t af;
@@ -69,7 +69,7 @@ uint8_t rot_right8(uint8_t val) {
 
 }
 
-void set_left_shift_flags(struct cpu_state *state, uint8_t val, uint8_t old7bit) {
+void set_left_shift_flags(struct gb_state *state, uint8_t val, uint8_t old7bit) {
 	state->fn = 0;
 	state->fh = 0;
 	if (val == 0) {
@@ -79,7 +79,7 @@ void set_left_shift_flags(struct cpu_state *state, uint8_t val, uint8_t old7bit)
 
 }
 
-void set_right_shift_flags(struct cpu_state *state, uint8_t val, uint8_t old0bit) {
+void set_right_shift_flags(struct gb_state *state, uint8_t val, uint8_t old0bit) {
 	state->fn = 0;
 	state->fh = 0;
 	if (val == 0) {
@@ -89,13 +89,13 @@ void set_right_shift_flags(struct cpu_state *state, uint8_t val, uint8_t old0bit
 
 }
 
-void set_add16_flags(struct cpu_state *state, uint16_t a, uint16_t b) {
+void set_add16_flags(struct gb_state *state, uint16_t a, uint16_t b) {
 	state->fn = 0;
 	state->fh = ((a & 0xfff) + (b & 0xfff)) & 0x100;
 	state->fc = ((uint32_t)a + (uint32_t)b) & 0x1000;
 }
 
-void set_add8_flags(struct cpu_state *state, uint8_t a, uint8_t b, int use_carry) {
+void set_add8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry) {
 	state->fn = 0;
 	if (a + b == 0) {
 		state->fz = 1;
@@ -106,7 +106,7 @@ void set_add8_flags(struct cpu_state *state, uint8_t a, uint8_t b, int use_carry
 	}
 }
 
-void set_dec_flags(struct cpu_state *state, uint8_t val) {
+void set_dec_flags(struct gb_state *state, uint8_t val) {
 	state->fn = 1;
 	if (val == 0) {
 		state->fz = 1;
@@ -117,7 +117,7 @@ void set_dec_flags(struct cpu_state *state, uint8_t val) {
 
 }
 
-int execute_cb(struct cpu_state *state) {
+int execute_cb(struct gb_state *state) {
 	int pc = state->pc;
 	uint8_t *op = &state->mem[pc];
 	int cycles = 0;
@@ -140,7 +140,7 @@ int execute_cb(struct cpu_state *state) {
  * Executes operation in memory at PC. Updates PC reference.
  * Returns number of clock cycles.
  */
-int execute(struct cpu_state *state) {
+int execute(struct gb_state *state) {
 	int pc = state->pc;
 	uint8_t *op = &state->mem[pc];
 	int cycles = 0;
@@ -286,7 +286,7 @@ int execute(struct cpu_state *state) {
 			cycles = execute_cb(state);
 			break;
 		default:
-			printf("Not implemented yet");
+			printf("Not implemented yet\n");
 			break;
 
 	};
@@ -294,12 +294,12 @@ int execute(struct cpu_state *state) {
 }
 
 
-void print_registers(struct cpu_state *state) {
+void print_registers(struct gb_state *state) {
 	printf("A: %02X, B: %02X, C: %02X, D: %02X, E: %02X, F: %02X, H: %02X, L: %02X, SP: %04X, PC: %04X\n", state->a, state->b, state->c, state->d, state->e, state->f, state->h, state->l, state->sp, state->pc);
 	printf("FLAGS: Z:%d N:%d H:%d C:%d None:%d\n", state->fz, state->fn, state->fh, state->fc, state->fl );
 }
 
-void print_memory(struct cpu_state *s) {
+void print_memory(struct gb_state *s) {
 	for (int i = 0x00; i < 0x10000; i+=0x10) {
 		printf("%04X\t", i);
 		for (int j = i; j < i + 0x10; j++) {
@@ -309,14 +309,16 @@ void print_memory(struct cpu_state *s) {
 	}
 }
 
-void power_up(struct cpu_state *state) {
-	// TODO: execute 256 byte program at mem 0
-	// TODO: read $104 to $133 and place graphic
-	// TODO: compare $103-$133 to table, stop on failure
-	// TODO: GB & GB Pocket: add all bytes from $134-$0x14d then add 25, check
-	// least sig bit eq to zero
-	// TODO: disable internal ROM and begin cartridge exec at $100
-	
+void run_bootstrap(struct gb_state *state) {
+	while (state->mem[0xFF50] != 0x01) {
+		execute(state);
+	}
+}
+
+void power_up(struct gb_state *state) {
+	state->pc = 0x0000;
+	run_bootstrap(state);
+
 	// potentially wrong find other docs
 	state->a = 0x01;
 	state->f = 0xB0;
@@ -360,15 +362,70 @@ void power_up(struct cpu_state *state) {
 	state->mem[0xFFFF] = 0x00;
 }
 
-void start() {
-	struct cpu_state *state = calloc(1, sizeof(struct cpu_state));
+
+void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size) {
+	struct gb_state *state = calloc(1, sizeof(struct gb_state));
 	state->mem = calloc(0x10000, sizeof(uint8_t));
+	
+	memcpy(state->mem, cart_mem, cart_size);
+	uint8_t *cart_first256 = calloc(0x100, sizeof(uint8_t));
+	memcpy(cart_first256, cart_mem, 0x100);
+	memcpy(state->mem, bs_mem, 0x100);
+
 	print_registers(state);
+
 	power_up(state);
+	memcpy(state->mem, cart_first256, 0x100);
+
+	free(cart_first256);
+	free(bs_mem);
+	free(cart_mem);
+
 	print_registers(state);
+	print_memory(state);
+
+	// normal fetch-execute from here
+}
+
+uint8_t *read_file(char *path, long *size) {
+	FILE *fp = fopen(path, "rb");
+
+	fseek(fp, 0L, SEEK_END);
+	*size = ftell(fp);
+	fseek(fp, 0L, SEEK_SET);
+
+	uint8_t *bin = calloc(*size, sizeof(uint8_t));
+	fread(bin, 1, *size, fp);
+	return bin;
 }
 
 int main(int argc, char **argv) {
-	start();
+	char *bootstrap_path;
+	char *cart_path;
+	if (argc > 1) {
+		for (int i = 1; i < argc; i++) {
+			printf("%s %d\n", argv[i], argc);
+			if (strcmp(argv[i],"-c") && i < argc - 1) {
+				cart_path = argv[++i];
+			} else if (strcmp(argv[i],"-b") && i < argc - 1) {
+				bootstrap_path = argv[++i];
+			} else {
+				printf("Illegal argument: %s", argv[i]);
+				exit(1);
+			}
+		}
+	} else {
+		puts("Not enough arguments");
+		exit(1);
+	}
+
+   	long bs_size, cart_size;
+	uint8_t *bs_mem = read_file(bootstrap_path, &bs_size);
+	if (bs_size != 0x100) {
+		printf("Bootstrap excepted to be size of 256 bytes (Actual: %l)", bs_size);
+	}
+	uint8_t *cart_mem = read_file(cart_path, &cart_size);
+
+	start(bs_mem, cart_mem, cart_size);
 	return 0;
 }
