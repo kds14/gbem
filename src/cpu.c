@@ -137,6 +137,24 @@ int execute_cb(struct gb_state *state) {
 }
 
 /*
+ * Loads a literal value into an 8bit reg. Such as LD C,n.
+ */
+int load8val2reg(struct gb_state *state, uint8_t *reg, uint8_t val) {
+	state->pc++;
+	*reg = val;
+	return 8;
+}
+
+/*
+ * Loads a reg value to an addr or vice versa. No literals to read.
+ * Examples: LD B,(HL) or LD (BC),A.
+ */
+int load8addr(struct gb_state *state, uint8_t *dest, uint8_t *src) {
+	*dest = *src;
+	return 8;
+}
+
+/*
  * Executes operation in memory at PC. Updates PC reference.
  * Returns number of clock cycles.
  */
@@ -159,8 +177,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x02:
 			/* LD (BC),A */
-			state->mem[state->bc] = state->a;
-			cycles = 8;
+			cycles = load8addr(state, &state->mem[state->bc], &state->a);
 			break;
 		case 0x03:
 			/* INC BC */
@@ -180,9 +197,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x06:
 			/* LD B,n */
-			state->b = op[1];
-			state->pc++;
-			cycles = 8;
+			cycles = load8val2reg(state, &state->b, op[1]);
 			break;
 		case 0x07:
 			/* RLCA */
@@ -226,9 +241,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x0E:
 			/* LD C,n */
-			state->c = op[1];
-			state->pc++;
-			cycles = 8;
+			cycles = load8val2reg(state, &state->c, op[1]);
 			break;
 		case 0x0F:
 			/* RRCA */
@@ -246,6 +259,35 @@ int execute(struct gb_state *state) {
 			puts("STOP 0 (0x1000) not implemented\n");
 			state->pc++;
 			cycles = 4;
+			break;
+		case 0x11:
+			/* LD DE,nn */
+			state->e = op[1];
+			state->d = op[2];
+			cycles = 12;
+			state->pc += 2;
+			break;
+		case 0x12:
+			/* LD (DE),A */
+			cycles = load8addr(state, &state->mem[state->de], &state->a);
+			break;
+		case 0x13:
+			/* INC DE */
+			state->de++;
+			cycles = 8;
+			break;
+		case 0x16:
+			/* LD D,n */
+			cycles = load8val2reg(state, &state->d, op[1]);
+			break;
+		case 0x1E:
+			/* LD E,n */
+			cycles = load8val2reg(state, &state->e, op[1]);
+			break;
+		case 0x1A:
+			/* LD A,(DE) */
+			cycles = load8addr(state, &state->a, &state->mem[state->de]);
+			break;
 		case 0x20:
 			// LEFT OFF HERE
 			int8_t offset = op[1];
@@ -261,18 +303,109 @@ int execute(struct gb_state *state) {
 			cycles = 12;
 			state->pc += 2;
 			break;
+		case 0x22:
+			/* LD (HL+),A */
+			cycles = load8addr(state, &state->mem[state->hl], &state->a);
+			state->hl++;
+			break;
+		case 0x23:
+			/* INC HL */
+			state->hl++;
+			cycles = 8;
+			break;
+		case 0x26:
+			/* LD H,n */
+			cycles = load8val2reg(state, &state->h, op[1]);
+			break;
+		case 0x2A:
+			/* LD A,(HL+) */
+			cycles = load8addr(state, &state->a, &state->mem[state->hl]);
+			state->hl++;
+			break;
+		case 0x2E:
+			/* LD L,n */
+			cycles = load8val2reg(state, &state->l, op[1]);
+			break;
 		case 0x31:
 			/* LD SP,nn */
-			uint16_t nn = (op[2] << 8) | op[1];
-			state->sp = nn;
+			state->sp = (op[2] << 8) | op[1];
 			cycles = 12;
 			state->pc += 2;
 			break;
 		case 0x32:
 			/* LD (HL-),A */
-			state->hl = state->a;
+			cycles = load8addr(state, &state->mem[state->hl], &state->a);
 			state->hl--;
+			break;
+		case 0x33:
+			/* INC SP */
+			state->sp++;
 			cycles = 8;
+			break;
+		case 0x3A:
+			/* LD A,(HL-) */
+			cycles = load8addr(state, &state->a, &state->mem[state->hl]);
+			state->hl--;
+			break;
+		case 0x3E:
+			/* LD A,n */
+			cycles = load8val2reg(state, &state->a, op[1]);
+			break;
+		case 0x46:
+			/* LD B,(HL) */
+			cycles = load8addr(state, &state->b, &state->mem[state->hl]);
+			break;
+		case 0x4E:
+			/* LD C,(HL) */
+			cycles = load8addr(state, &state->c, &state->mem[state->hl]);
+			break;
+		case 0x56:
+			/* LD D,(HL) */
+			cycles = load8addr(state, &state->d, &state->mem[state->hl]);
+			break;
+		case 0x5E:
+			/* LD E,(HL) */
+			cycles = load8addr(state, &state->e, &state->mem[state->hl]);
+			break;
+		case 0x66:
+			/* LD H,(HL) */
+			cycles = load8addr(state, &state->h, &state->mem[state->hl]);
+			break;
+		case 0x6E:
+			/* LD L,(HL) */
+			cycles = load8addr(state, &state->l, &state->mem[state->hl]);
+			break;
+		case 0x70:
+			/* LD (HL),B */
+			cycles = load8addr(state, &state->mem[state->hl], &state->b);
+			break;
+		case 0x71:
+			/* LD (HL),C */
+			cycles = load8addr(state, &state->mem[state->hl], &state->c);
+			break;
+		case 0x72:
+			/* LD (HL),D */
+			cycles = load8addr(state, &state->mem[state->hl], &state->d);
+			break;
+		case 0x73:
+			/* LD (HL),E */
+			cycles = load8addr(state, &state->mem[state->hl], &state->e);
+			break;
+		case 0x74:
+			/* LD (HL),H */
+			cycles = load8addr(state, &state->mem[state->hl], &state->h);
+			break;
+		case 0x75:
+			/* LD (HL),L */
+			cycles = load8addr(state, &state->mem[state->hl], &state->l);
+			break;
+		case 0x77:
+			/* LD (HL),A */
+			cycles = load8addr(state, &state->mem[state->hl], &state->a);
+			break;
+		case 0x7E:
+			/* LD A,(HL) */
+			cycles = load8addr(state, &state->a, &state->mem[state->hl]);
 			break;
 		case 0xAF:
 			/* XOR A */
@@ -284,6 +417,44 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xCB:
 			cycles = execute_cb(state);
+			break;
+		case 0xCD:
+			/* CALL nn */
+			state->pc += 2;
+			state->sp -= 2;
+			// TODO: Should LS byte be first since stack goes backwards?
+			memcpy(&state->mem[state->sp], &state->pc, 2);
+			cycles = 12;
+			break;
+		case 0xE0:
+			/* 
+			 * LDH (n),A
+			 * LD (n+$FF00),A
+			 */
+			state->mem[op[1] + 0xFF00] = state->a;
+			cycles = 12;
+			state->pc++;
+			break;
+		case 0xE2:
+			/* LD (C+$FF00),A */
+			state->mem[state->c + 0xFF00] = state->a;
+			cycles = 8;
+			state->pc++;
+			break;
+		case 0xF0:
+			/* 
+			 * LDH A,(n)
+			 * LD A,(n+$FF00)
+			 */
+			state->a = state->mem[op[1] + 0xFF00];
+			cycles = 12;
+			state->pc++;
+			break;
+		case 0xF2:
+			/* LD A,(C+$FF00) */
+			state->a = state->mem[state->c + 0xFF00];
+			cycles = 8;
+			state->pc++;
 			break;
 		default:
 			printf("Not implemented yet\n");
@@ -367,7 +538,7 @@ void power_up(struct gb_state *state) {
 void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size) {
 	struct gb_state *state = calloc(1, sizeof(struct gb_state));
 	state->mem = calloc(0x10000, sizeof(uint8_t));
-	
+
 	memcpy(state->mem, cart_mem, cart_size);
 	uint8_t *cart_first256 = calloc(0x100, sizeof(uint8_t));
 	memcpy(cart_first256, cart_mem, 0x100);
@@ -419,7 +590,7 @@ int main(int argc, char **argv) {
 		exit(1);
 	}
 
-   	long bs_size = 0;
+	long bs_size = 0;
 	long cart_size = 0;
 	uint8_t *bs_mem = read_file(bootstrap_path, &bs_size);
 	if (bs_size != 0x100) {
