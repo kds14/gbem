@@ -130,7 +130,7 @@ int execute_cb(struct gb_state *state) {
 			cycles = 8;
 			break;
 		default:
-			printf("CB %02X instruction not implemented yet", state->mem[pc]);
+			printf("CB %02X instruction not implemented yet\n", state->mem[pc]);
 			break;
 	}
 	return cycles;
@@ -300,9 +300,10 @@ void print_registers(struct gb_state *state) {
 }
 
 void print_memory(struct gb_state *s) {
-	for (int i = 0x00; i < 0x10000; i+=0x10) {
+	int column_length = 0x40;
+	for (int i = 0x00; i < 0x10000; i+= column_length) {
 		printf("%04X\t", i);
-		for (int j = i; j < i + 0x10; j++) {
+		for (int j = i; j < i + column_length; j++) {
 			printf("%02X ", s->mem[j]);
 		}
 		puts("");
@@ -310,7 +311,7 @@ void print_memory(struct gb_state *s) {
 }
 
 void run_bootstrap(struct gb_state *state) {
-	while (state->mem[0xFF50] != 0x01) {
+	while (state->mem[0xFF50] != 0x01 && state->pc < 0x100) {
 		execute(state);
 	}
 }
@@ -404,10 +405,9 @@ int main(int argc, char **argv) {
 	char *cart_path;
 	if (argc > 1) {
 		for (int i = 1; i < argc; i++) {
-			printf("%s %d\n", argv[i], argc);
-			if (strcmp(argv[i],"-c") && i < argc - 1) {
+			if (!strcmp(argv[i],"-c") && i < argc - 1) {
 				cart_path = argv[++i];
-			} else if (strcmp(argv[i],"-b") && i < argc - 1) {
+			} else if (!strcmp(argv[i],"-b") && i < argc - 1) {
 				bootstrap_path = argv[++i];
 			} else {
 				printf("Illegal argument: %s", argv[i]);
@@ -419,10 +419,12 @@ int main(int argc, char **argv) {
 		exit(1);
 	}
 
-   	long bs_size, cart_size;
+   	long bs_size = 0;
+	long cart_size = 0;
 	uint8_t *bs_mem = read_file(bootstrap_path, &bs_size);
 	if (bs_size != 0x100) {
-		printf("Bootstrap excepted to be size of 256 bytes (Actual: %l)", bs_size);
+		printf("Bootstrap excepted to be size of 256 bytes (Actual: %ld)", bs_size);
+		exit(1);
 	}
 	uint8_t *cart_mem = read_file(cart_path, &cart_size);
 
