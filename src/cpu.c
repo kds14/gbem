@@ -146,15 +146,6 @@ int load8val2reg(struct gb_state *state, uint8_t *reg, uint8_t val) {
 }
 
 /*
- * Loads a reg value to an addr or vice versa. No literals to read.
- * Examples: LD B,(HL) or LD (BC),A.
- */
-int load8addr(struct gb_state *state, uint8_t *dest, uint8_t *src) {
-	*dest = *src;
-	return 8;
-}
-
-/*
  * Executes operation in memory at PC. Updates PC reference.
  * Returns number of clock cycles.
  */
@@ -177,7 +168,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x02:
 			/* LD (BC),A */
-			cycles = load8addr(state, &state->mem[state->bc], &state->a);
+			state->mem[state->bc] = state->a;
+			cycles = 8;
 			break;
 		case 0x03:
 			/* INC BC */
@@ -269,7 +261,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x12:
 			/* LD (DE),A */
-			cycles = load8addr(state, &state->mem[state->de], &state->a);
+			state->mem[state->de] = state->a;
+			cycles = 8;
 			break;
 		case 0x13:
 			/* INC DE */
@@ -286,7 +279,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x1A:
 			/* LD A,(DE) */
-			cycles = load8addr(state, &state->a, &state->mem[state->de]);
+			state->a = state->mem[state->de];
+			cycles = 8;
 			break;
 		case 0x20:
 			// LEFT OFF HERE
@@ -305,7 +299,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x22:
 			/* LD (HL+),A */
-			cycles = load8addr(state, &state->mem[state->hl], &state->a);
+			state->mem[state->hl] = state->a;
+			cycles = 8;
 			state->hl++;
 			break;
 		case 0x23:
@@ -319,7 +314,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x2A:
 			/* LD A,(HL+) */
-			cycles = load8addr(state, &state->a, &state->mem[state->hl]);
+			state->a = state->mem[state->hl];
+			cycles = 8;
 			state->hl++;
 			break;
 		case 0x2E:
@@ -334,7 +330,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x32:
 			/* LD (HL-),A */
-			cycles = load8addr(state, &state->mem[state->hl], &state->a);
+			state->mem[state->hl] = state->a;
+			cycles = 8;
 			state->hl--;
 			break;
 		case 0x33:
@@ -344,68 +341,333 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x3A:
 			/* LD A,(HL-) */
-			cycles = load8addr(state, &state->a, &state->mem[state->hl]);
+			state->a = state->mem[state->hl];
+			cycles = 8;
 			state->hl--;
 			break;
 		case 0x3E:
 			/* LD A,n */
 			cycles = load8val2reg(state, &state->a, op[1]);
 			break;
+		case 0x40:
+			/* LD B,B */
+			state->b = state->b;
+			cycles = 4;
+			break;
+		case 0x41:
+			/* LD B,C */
+			state->b = state->c;
+			cycles = 4;
+			break;
+		case 0x42:
+			/* LD B,D */
+			state->b = state->d;
+			cycles = 4;
+			break;
+		case 0x43:
+			/* LD B,E */
+			state->b = state->e;
+			cycles = 4;
+			break;
+		case 0x44:
+			/* LD B,H */
+			state->b = state->h;
+			cycles = 4;
+			break;
+		case 0x45:
+			/* LD B,L */
+			state->b = state->l;
+			cycles = 4;
+			break;
 		case 0x46:
 			/* LD B,(HL) */
-			cycles = load8addr(state, &state->b, &state->mem[state->hl]);
+			state->b = state->mem[state->hl];
+			cycles = 8;
+			break;
+		case 0x47:
+			/* LD B,A */
+			state->b = state->a;
+			cycles = 4;
+			break;
+		case 0x48:
+			/* LD C,B */
+			state->c = state->b;
+			cycles = 4;
+			break;
+		case 0x49:
+			/* LD C,C */
+			state->c = state->c;
+			cycles = 4;
+			break;
+		case 0x4A:
+			/* LD C,D */
+			state->c = state->d;
+			cycles = 4;
+			break;
+		case 0x4B:
+			/* LD C,E */
+			state->c = state->e;
+			cycles = 4;
+			break;
+		case 0x4C:
+			/* LD C,H */
+			state->c = state->h;
+			cycles = 4;
+			break;
+		case 0x4D:
+			/* LD C,L */
+			state->c = state->l;
+			cycles = 4;
 			break;
 		case 0x4E:
 			/* LD C,(HL) */
-			cycles = load8addr(state, &state->c, &state->mem[state->hl]);
+			state->c = state->mem[state->hl];
+			cycles = 8;
+			break;
+		case 0x4F:
+			/* LD C,A */
+			state->c = state->a;
+			cycles = 4;
+			break;
+		case 0x50:
+			/* LD D,B */
+			state->d = state->b;
+			cycles = 4;
+			break;
+		case 0x51:
+			/* LD D,C */
+			state->d = state->c;
+			cycles = 4;
+			break;
+		case 0x52:
+			/* LD D,D */
+			state->d = state->d;
+			cycles = 4;
+			break;
+		case 0x53:
+			/* LD D,E */
+			state->d = state->e;
+			cycles = 4;
+			break;
+		case 0x54:
+			/* LD D,H */
+			state->d = state->h;
+			cycles = 4;
+			break;
+		case 0x55:
+			/* LD D,L */
+			state->d = state->l;
+			cycles = 4;
 			break;
 		case 0x56:
 			/* LD D,(HL) */
-			cycles = load8addr(state, &state->d, &state->mem[state->hl]);
+			state->d = state->mem[state->hl];
+			cycles = 8;
+			break;
+		case 0x57:
+			/* LD D,A */
+			state->d = state->a;
+			cycles = 4;
+			break;
+		case 0x58:
+			/* LD E,B */
+			state->e = state->b;
+			cycles = 4;
+			break;
+		case 0x59:
+			/* LD E,C */
+			state->e = state->c;
+			cycles = 4;
+			break;
+		case 0x5A:
+			/* LD E,D */
+			state->e = state->d;
+			cycles = 4;
+			break;
+		case 0x5B:
+			/* LD E,E */
+			state->e = state->e;
+			cycles = 4;
+			break;
+		case 0x5C:
+			/* LD E,H */
+			state->e = state->h;
+			cycles = 4;
+			break;
+		case 0x5D:
+			/* LD E,L */
+			state->e = state->l;
+			cycles = 4;
 			break;
 		case 0x5E:
 			/* LD E,(HL) */
-			cycles = load8addr(state, &state->e, &state->mem[state->hl]);
+			state->e = state->mem[state->hl];
+			cycles = 8;
+			break;
+		case 0x5F:
+			/* LD E,A */
+			state->e = state->a;
+			cycles = 4;
+			break;
+		case 0x60:
+			/* LD H,B */
+			state->h = state->b;
+			cycles = 4;
+			break;
+		case 0x61:
+			/* LD H,C */
+			state->h = state->c;
+			cycles = 4;
+			break;
+		case 0x62:
+			/* LD H,D */
+			state->h = state->d;
+			cycles = 4;
+			break;
+		case 0x63:
+			/* LD H,E */
+			state->h = state->e;
+			cycles = 4;
+			break;
+		case 0x64:
+			/* LD H,H */
+			state->h = state->h;
+			cycles = 4;
+			break;
+		case 0x65:
+			/* LD H,L */
+			state->h = state->l;
+			cycles = 4;
 			break;
 		case 0x66:
 			/* LD H,(HL) */
-			cycles = load8addr(state, &state->h, &state->mem[state->hl]);
+			state->h = state->mem[state->hl];
+			cycles = 8;
+			break;
+		case 0x67:
+			/* LD H,A */
+			state->h = state->a;
+			cycles = 4;
+			break;
+		case 0x68:
+			/* LD L,B */
+			state->l = state->b;
+			cycles = 4;
+			break;
+		case 0x69:
+			/* LD L,C */
+			state->l = state->c;
+			cycles = 4;
+			break;
+		case 0x6A:
+			/* LD L,D */
+			state->l = state->d;
+			cycles = 4;
+			break;
+		case 0x6B:
+			/* LD L,E */
+			state->l = state->e;
+			cycles = 4;
+			break;
+		case 0x6C:
+			/* LD L,H */
+			state->l = state->h;
+			cycles = 4;
+			break;
+		case 0x6D:
+			/* LD L,L */
+			state->l = state->l;
+			cycles = 4;
 			break;
 		case 0x6E:
 			/* LD L,(HL) */
-			cycles = load8addr(state, &state->l, &state->mem[state->hl]);
+			state->l = state->mem[state->hl];
+			cycles = 8;
+			break;
+		case 0x6F:
+			/* LD L,A */
+			state->l = state->a;
+			cycles = 4;
 			break;
 		case 0x70:
 			/* LD (HL),B */
-			cycles = load8addr(state, &state->mem[state->hl], &state->b);
+			state->mem[state->hl] = state->b;
+			cycles = 8;
 			break;
 		case 0x71:
 			/* LD (HL),C */
-			cycles = load8addr(state, &state->mem[state->hl], &state->c);
+			state->mem[state->hl] = state->c;
+			cycles = 8;
 			break;
 		case 0x72:
 			/* LD (HL),D */
-			cycles = load8addr(state, &state->mem[state->hl], &state->d);
+			state->mem[state->hl] = state->d;
+			cycles = 8;
 			break;
 		case 0x73:
 			/* LD (HL),E */
-			cycles = load8addr(state, &state->mem[state->hl], &state->e);
+			state->mem[state->hl] = state->e;
+			cycles = 8;
 			break;
 		case 0x74:
 			/* LD (HL),H */
-			cycles = load8addr(state, &state->mem[state->hl], &state->h);
+			state->mem[state->hl] = state->h;
+			cycles = 8;
 			break;
 		case 0x75:
 			/* LD (HL),L */
-			cycles = load8addr(state, &state->mem[state->hl], &state->l);
+			state->mem[state->hl] = state->l;
+			cycles = 8;
+			break;
+		case 0x76:
+			/* HALT */
+			// TODO: implement halt
+			cycles = 4;
 			break;
 		case 0x77:
 			/* LD (HL),A */
-			cycles = load8addr(state, &state->mem[state->hl], &state->a);
+			state->mem[state->hl] = state->a;
+			cycles = 8;
+			break;
+		case 0x78:
+			/* LD A,B */
+			state->a = state->b;
+			cycles = 4;
+			break;
+		case 0x79:
+			/* LD A,C */
+			state->a = state->c;
+			cycles = 4;
+			break;
+		case 0x7A:
+			/* LD A,D */
+			state->a = state->d;
+			cycles = 4;
+			break;
+		case 0x7B:
+			/* LD A,E */
+			state->a = state->e;
+			cycles = 4;
+			break;
+		case 0x7C:
+			/* LD A,H */
+			state->a = state->h;
+			cycles = 4;
+			break;
+		case 0x7D:
+			/* LD A,L */
+			state->a = state->l;
+			cycles = 4;
 			break;
 		case 0x7E:
 			/* LD A,(HL) */
-			cycles = load8addr(state, &state->a, &state->mem[state->hl]);
+			state->a = state->mem[state->hl];
+			cycles = 8;
+			break;
+		case 0x7F:
+			/* LD A,A */
+			state->a = state->a;
+			cycles = 4;
 			break;
 		case 0xAF:
 			/* XOR A */
