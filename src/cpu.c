@@ -53,6 +53,8 @@ struct gb_state
 	};
 	uint16_t sp;
 	uint16_t pc;
+	uint16_t ime;
+	uint8_t halt;
 	uint8_t *mem;
 
 };
@@ -1898,7 +1900,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x76:
 			/* HALT */
-			// TODO: implement halt
+			state->halt = 1;
 			break;
 		case 0x77:
 			/* LD (HL),A */
@@ -2450,7 +2452,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xF3:
 			/* DI */
-			// TODO: Implement disable interrupts
+			state->ime = 0;
 			break;
 		case 0xF5:
 			/* PUSH AF */
@@ -2490,7 +2492,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xFB:
 			/* EI */
-			// TODO: Implement enable interrupts
+			state->ime = 1;
 			break;
 		case 0xFE:
 			/* CP A,n */
@@ -2511,6 +2513,29 @@ int execute(struct gb_state *state) {
 	return cycles;
 }
 
+void handle_interrupts(struct gb_state *state) {
+	uint8_t iff = state->mem[0xFF0F];
+	uint8_t ie = state->mem[0xFF0F];
+	uint16_t addr = 0x0000;
+	if (iff & ie & 0x01) {
+		addr = 0x0040;
+	} else if (iff & ie & 0x02) {
+		addr = 0x0048;
+	} else if (iff & ie & 0x04) {
+		addr = 0x0050;
+	} else if (iff & ie & 0x08) {
+		addr = 0x0058;
+	} else if (iff & ie & 0x10) {
+		addr = 0x0060;
+	}
+
+	if (addr != 0x000) {
+		state->ime = 0;
+		push(state, state->pc);
+		state->pc = addr;
+	}
+
+}
 
 void print_registers(struct gb_state *state) {
 	printf("A: %02X, B: %02X, C: %02X, D: %02X, E: %02X, F: %02X, H: %02X, L: %02X, SP: %04X, PC: %04X\n", state->a, state->b, state->c, state->d, state->e, state->f, state->h, state->l, state->sp, state->pc);
@@ -2540,7 +2565,6 @@ void power_up(struct gb_state *state, int bootstrap_flag) {
 		run_bootstrap(state);
 	}
 
-	// potentially wrong find other docs
 	state->a = 0x01;
 	state->f = 0xB0;
 	state->b = 0x00;
@@ -2581,6 +2605,10 @@ void power_up(struct gb_state *state, int bootstrap_flag) {
 	state->mem[0xFF4A] = 0x00;
 	state->mem[0xFF4B] = 0x00;
 	state->mem[0xFFFF] = 0x00;
+
+	//custom
+	state->ime = 0;
+	state->halt = 0;
 }
 
 
@@ -2611,8 +2639,14 @@ void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_fla
 
 	// normal fetch-execute from here
 	while (state->mem[state->pc] != 0x76 && state->pc < 0x1000) {
-		if (!execute(state)) {
-			break;
+		if (!state->halt) {
+			if (!execute(state)) {
+				break;
+			}
+		}
+		if (state->ime) {
+			handle_interrupts(state);
+			state->halt = 0;
 		}
 		print_registers(state);
 	}
