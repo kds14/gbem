@@ -131,7 +131,7 @@ void cpA(struct gb_state *state, uint8_t val) {
 
 void pop(struct gb_state *state, uint16_t *dest) {
 	memcpy(dest, &state->mem[state->sp], 2);
-	state->sp++;
+	state->sp += 2;
 }
 
 void ret(struct gb_state *state, uint8_t condition) {
@@ -1322,6 +1322,7 @@ int execute_cb(struct gb_state *state) {
 int execute(struct gb_state *state) {
 	int pc = state->pc;
 	uint8_t *op = &state->mem[pc];
+	printf("OP:%02x\n", op[0]);
 	int cycles = 4;
 	state->pc++;
 	uint16_t nn = (op[2] << 8) | op[1];
@@ -1354,6 +1355,7 @@ int execute(struct gb_state *state) {
 		case 0x05:
 			/* DEC B */
 			set_sub8_flags(state, state->b, 1, 0);
+			state->b--;
 			break;
 		case 0x06:
 			/* LD B,n */
@@ -2412,6 +2414,7 @@ int execute(struct gb_state *state) {
 		case 0xEA:
 			/* LD (nn),A */
 			state->mem[nn] = state->a;
+			state->pc += 2;
 			cycles = 16;
 			break;
 		case 0xEE:
@@ -2501,7 +2504,8 @@ int execute(struct gb_state *state) {
 			rst(state, 0x38);
 			break;
 		default:
-			printf("Not implemented yet\n");
+			printf("%02X not implemented yet\n", *op);
+			cycles = 0;
 			break;
 	};
 	return cycles;
@@ -2530,9 +2534,11 @@ void run_bootstrap(struct gb_state *state) {
 	}
 }
 
-void power_up(struct gb_state *state) {
+void power_up(struct gb_state *state, int bootstrap_flag) {
 	state->pc = 0x0000;
-	run_bootstrap(state);
+	if (bootstrap_flag) {
+		run_bootstrap(state);
+	}
 
 	// potentially wrong find other docs
 	state->a = 0x01;
@@ -2578,28 +2584,40 @@ void power_up(struct gb_state *state) {
 }
 
 
-void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size) {
+void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_flag) {
+	printf("BS:%d\n", bootstrap_flag);
 	struct gb_state *state = calloc(1, sizeof(struct gb_state));
 	state->mem = calloc(0x10000, sizeof(uint8_t));
 
 	memcpy(state->mem, cart_mem, cart_size);
 	uint8_t *cart_first256 = calloc(0x100, sizeof(uint8_t));
 	memcpy(cart_first256, cart_mem, 0x100);
-	memcpy(state->mem, bs_mem, 0x100);
+	if (bootstrap_flag) {
+		memcpy(state->mem, bs_mem, 0x100);
+	}
 
 	print_registers(state);
 
-	power_up(state);
-	memcpy(state->mem, cart_first256, 0x100);
+	power_up(state, bootstrap_flag);
+	if (bootstrap_flag) {
+		memcpy(state->mem, cart_first256, 0x100);
+		free(bs_mem);
+	}
 
 	free(cart_first256);
-	free(bs_mem);
 	free(cart_mem);
 
 	print_registers(state);
-	//print_memory(state);
 
 	// normal fetch-execute from here
+	while (state->mem[state->pc] != 0x76 && state->pc < 0x1000) {
+		if (!execute(state)) {
+			break;
+		}
+		print_registers(state);
+	}
+
+	print_memory(state);
 }
 
 uint8_t *read_file(char *path, long *size) {
@@ -2617,12 +2635,14 @@ uint8_t *read_file(char *path, long *size) {
 int main(int argc, char **argv) {
 	char *bootstrap_path;
 	char *cart_path;
+	uint8_t bootstrap_flag = 0;
 	if (argc > 1) {
 		for (int i = 1; i < argc; i++) {
 			if (!strcmp(argv[i],"-c") && i < argc - 1) {
 				cart_path = argv[++i];
 			} else if (!strcmp(argv[i],"-b") && i < argc - 1) {
 				bootstrap_path = argv[++i];
+				bootstrap_flag = 1;
 			} else {
 				printf("Illegal argument: %s", argv[i]);
 				exit(1);
@@ -2635,13 +2655,16 @@ int main(int argc, char **argv) {
 
 	long bs_size = 0;
 	long cart_size = 0;
-	uint8_t *bs_mem = read_file(bootstrap_path, &bs_size);
-	if (bs_size != 0x100) {
-		printf("Bootstrap excepted to be size of 256 bytes (Actual: %ld)", bs_size);
-		exit(1);
+	uint8_t *bs_mem = 0;
+	if (bootstrap_flag) {
+		bs_mem = read_file(bootstrap_path, &bs_size);
+		if (bs_size != 0x100) {
+			printf("Bootstrap excepted to be size of 256 bytes (Actual: %ld)", bs_size);
+			exit(1);
+		}
 	}
 	uint8_t *cart_mem = read_file(cart_path, &cart_size);
 
-	start(bs_mem, cart_mem, cart_size);
+	start(bs_mem, cart_mem, cart_size, bootstrap_flag);
 	return 0;
 }
