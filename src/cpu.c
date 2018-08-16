@@ -3,6 +3,9 @@
 #include <malloc.h>
 #include <memory.h>
 
+#define CLOCK_SPEED 4195304
+#define MAX_CYCLES_PER_FRAME 70273
+
 /*
  * Registers:
  * A F (Z, N, H, C flag bits)
@@ -1324,7 +1327,7 @@ int execute_cb(struct gb_state *state) {
 int execute(struct gb_state *state) {
 	int pc = state->pc;
 	uint8_t *op = &state->mem[pc];
-	printf("OP:%02x\n", op[0]);
+	//printf("OP:%02x\n", op[0]);
 	int cycles = 4;
 	state->pc++;
 	uint16_t nn = (op[2] << 8) | op[1];
@@ -1448,7 +1451,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x18:
 			/* JR n */
-			state->pc += 1 + op[1];
+			state->pc += 1 + (int8_t)op[1];
 			cycles = 8;
 			break;
 		case 0x19:
@@ -1486,7 +1489,7 @@ int execute(struct gb_state *state) {
 		case 0x20:
 			/* JR NZ,n */
 			if (!state->fz) {
-				state->pc += 1 + op[1];
+				state->pc += 1 + (int8_t)op[1];
 			}
 			cycles = 8;
 			break;
@@ -1586,7 +1589,7 @@ int execute(struct gb_state *state) {
 		case 0x30:
 			/* JR NC,n */
 			if (!state->fc) {
-				state->pc += 1 + op[1];
+				state->pc += 1 + (int8_t)op[1];
 			}
 			cycles = 8;
 			break;
@@ -1631,7 +1634,7 @@ int execute(struct gb_state *state) {
 		case 0x38:
 			/* JR C,n */
 			if (state->fc) {
-				state->pc += 1 + op[1];
+				state->pc += 1 + (int8_t)op[1];
 			}
 			cycles = 8;
 			break;
@@ -1901,6 +1904,8 @@ int execute(struct gb_state *state) {
 		case 0x76:
 			/* HALT */
 			state->halt = 1;
+			// TODO: figure out if supposed to enable IME
+			state->ime = 1;
 			break;
 		case 0x77:
 			/* LD (HL),A */
@@ -2340,8 +2345,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xD9:
 			/* RETI */
-			// TODO: ENABLE INTERRUPTS
 			ret(state, 1);
+			state->ime = 1;
 			cycles = 8;
 			break;
 		case 0xDA:
@@ -2513,29 +2518,6 @@ int execute(struct gb_state *state) {
 	return cycles;
 }
 
-void handle_interrupts(struct gb_state *state) {
-	uint8_t iff = state->mem[0xFF0F];
-	uint8_t ie = state->mem[0xFF0F];
-	uint16_t addr = 0x0000;
-	if (iff & ie & 0x01) {
-		addr = 0x0040;
-	} else if (iff & ie & 0x02) {
-		addr = 0x0048;
-	} else if (iff & ie & 0x04) {
-		addr = 0x0050;
-	} else if (iff & ie & 0x08) {
-		addr = 0x0058;
-	} else if (iff & ie & 0x10) {
-		addr = 0x0060;
-	}
-
-	if (addr != 0x000) {
-		state->ime = 0;
-		push(state, state->pc);
-		state->pc = addr;
-	}
-
-}
 
 void print_registers(struct gb_state *state) {
 	printf("A: %02X, B: %02X, C: %02X, D: %02X, E: %02X, F: %02X, H: %02X, L: %02X, SP: %04X, PC: %04X\n", state->a, state->b, state->c, state->d, state->e, state->f, state->h, state->l, state->sp, state->pc);
@@ -2611,6 +2593,96 @@ void power_up(struct gb_state *state, int bootstrap_flag) {
 	state->halt = 0;
 }
 
+void handle_interrupts(struct gb_state *state) {
+	if (!state->ime)
+		return;
+	uint8_t ie = state->mem[0xFFFF];
+	uint8_t iff = state->mem[0xFF0F];
+	uint16_t addr = 0x0000;
+	if (iff & ie & 0x01) {
+		// V-Blank
+		addr = 0x0040;
+	} else if (iff & ie & 0x02) {
+		// LCDC
+		addr = 0x0048;
+	} else if (iff & ie & 0x04) {
+		// Timer overflow
+		addr = 0x0050;
+	} else if (iff & ie & 0x08) {
+		// Serial I/O transfer complete
+		addr = 0x0058;
+	} else if (iff & ie & 0x10) {
+		// Transition from High to Low of Pin number P10-P13
+		addr = 0x0060;
+	}
+
+	if (addr != 0x000) {
+		printf("INTERUPT: %04X", addr);
+		state->ime = 0;
+		push(state, state->pc);
+		state->pc = addr;
+		state->halt = 0;
+		state->mem[0xFF0F] = 0;
+	}
+
+}
+
+void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *divCycles, uint32_t *timerCycles) {
+	*divCycles += cycles;
+	*timerCycles += cycles;
+	if (*divCycles >= 16384) {
+		*divCycles = 0;
+		state->mem[0xFF04] += 1;
+	}
+	if ((state->mem[0xFF07] & 0x04) != 0x04)
+		return;
+	uint32_t tima_freq = 2147483647;
+	switch (state->mem[0xFF07] & 0x03) {
+		case 0x00:
+			tima_freq = 4096;
+			break;
+		case 0x01:
+			tima_freq = 262144;
+			break;
+		case 0x10:
+			tima_freq = 65536;
+			break;
+		case 0x11:
+			tima_freq = 16384;
+			break;
+	}
+	if (*timerCycles >= tima_freq) {
+		*timerCycles = 0;
+		state->mem[0xFF05] += 1;
+		if (state->mem[0xFF05] == 0xFF) {
+			state->mem[0xFF0F] |= 0x04;
+		}
+	}
+}
+
+void instruction_cycle(struct gb_state *state) {
+	uint16_t divCycles = 0;
+	uint32_t timerCycles = 0;
+	while (state->mem[state->pc] != 0x76) {
+		uint32_t currentCycles = 0;
+		while (currentCycles < MAX_CYCLES_PER_FRAME && state->pc < 0x100)
+		{
+			if (state->mem[state->pc] == 0x76)
+			{
+				break;
+			}
+			int cycles = 0;
+			if (!state->halt) {
+				cycles = execute(state);
+				currentCycles += cycles;
+			}
+			handle_timers(state, cycles, &divCycles, &timerCycles);
+			handle_interrupts(state);
+			//print_registers(state);
+		}
+	}
+}
+
 
 void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_flag) {
 	printf("BS:%d\n", bootstrap_flag);
@@ -2637,19 +2709,9 @@ void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_fla
 
 	print_registers(state);
 
-	// normal fetch-execute from here
-	while (state->mem[state->pc] != 0x76 && state->pc < 0x1000) {
-		if (!state->halt) {
-			if (!execute(state)) {
-				break;
-			}
-		}
-		if (state->ime) {
-			handle_interrupts(state);
-			state->halt = 0;
-		}
-		print_registers(state);
-	}
+	instruction_cycle(state);
+
+	print_registers(state);
 
 	print_memory(state);
 }
