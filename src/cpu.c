@@ -3,6 +3,8 @@
 #include <malloc.h>
 #include <memory.h>
 
+#include "mem.h"
+
 #define CLOCK_SPEED 4195304
 #define MAX_CYCLES_PER_FRAME 70273
 
@@ -64,16 +66,16 @@ struct gb_state
 
 void set_add16_flags(struct gb_state *state, uint16_t a, uint16_t b) {
 	state->fn = 0;
-	state->fh = ((a & 0xfff) + (b & 0xfff)) & 0x100;
+	state->fh = ((a & 0xFFF) + (b & 0xFFF)) & 0x100;
 	state->fc = ((uint32_t)a + (uint32_t)b) & 0x1000;
 }
 
 void set_add8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry) {
 	state->fn = 0;
 	state->fz = !(a + b);
-	state->fh = ((a & 0x0f) + (b & 0x0f)) & 0x10;
+	state->fh = ((a & 0x0F) + (b & 0x0F)) & 0x10;
 	if (use_carry) {
-		state->fc = (((uint16_t)a & 0xff) + ((uint16_t)b & 0xff)) & 0x100;
+		state->fc = (((uint16_t)a & 0xFF) + ((uint16_t)b & 0xFF)) & 0x100;
 	}
 }
 
@@ -81,7 +83,7 @@ void set_add8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry)
 void set_sub8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry) {
 	state->fn = 1;
 	state->fz = a == b;
-	state->fh = (a & 0x0f) >= (b & 0x0f);
+	state->fh = (a & 0x0F) >= (b & 0x0F);
 	if (use_carry) {
 		state->fc = a >= b;
 	}
@@ -414,7 +416,7 @@ int execute_cb(struct gb_state *state) {
 		case 0x26:
 			/* SLA (HL) */
 			rot_left(state, &state->mem[state->hl]);
-			state->mem[state->hl] = state->mem[state->hl] & 0xFE;
+			set_mem(state->hl, state->mem[state->hl] & 0xFE);
 			cycles = 16;
 			break;
 		case 0x27:
@@ -1344,7 +1346,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x02:
 			/* LD (BC),A */
-			state->mem[state->bc] = state->a;
+			set_mem(state->bc, state->a);
 			cycles = 8;
 			break;
 		case 0x03:
@@ -1373,7 +1375,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x08:
 			/* LD (nn),SP */
-			state->mem[nn] = state->sp;
+			set_mem(nn, state->sp);
 			state->pc += 2;
 			cycles = 20;
 			break;
@@ -1424,7 +1426,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x12:
 			/* LD (DE),A */
-			state->mem[state->de] = state->a;
+			set_mem(state->de, state->a);
 			cycles = 8;
 			break;
 		case 0x13:
@@ -1502,7 +1504,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x22:
 			/* LD (HL+),A */
-			state->mem[state->hl] = state->a;
+			set_mem(state->hl, state->a);
 			cycles = 8;
 			state->hl++;
 			break;
@@ -1533,11 +1535,11 @@ int execute(struct gb_state *state) {
 					state->a -= 0x06;
 				}
 			} else {
-				if ((state->a & 0xff) > 0x99 || state->fh) {
+				if ((state->a & 0xFF) > 0x99 || state->fh) {
 					state->a += 0x60;
 					state->fc = 1;
 				}
-				if ((state->a & 0x0f) > 0x09 || state->fc) {
+				if ((state->a & 0x0F) > 0x09 || state->fc) {
 					state->a += 0x06;
 				}
 			}
@@ -1601,7 +1603,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x32:
 			/* LD (HL-),A */
-			state->mem[state->hl] = state->a;
+			set_mem(state->hl, state->a);
 			cycles = 8;
 			state->hl--;
 			break;
@@ -1621,7 +1623,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x36:
 			/* LD (HL),n */
-			state->mem[state->hl] = op[1];
+			set_mem(state->hl, op[1]);
 			state->pc++;
 			cycles = 12;
 			break;
@@ -1873,32 +1875,32 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x70:
 			/* LD (HL),B */
-			state->mem[state->hl] = state->b;
+			set_mem(state->hl, state->b);
 			cycles = 8;
 			break;
 		case 0x71:
 			/* LD (HL),C */
-			state->mem[state->hl] = state->c;
+			set_mem(state->hl, state->c);
 			cycles = 8;
 			break;
 		case 0x72:
 			/* LD (HL),D */
-			state->mem[state->hl] = state->d;
+			set_mem(state->hl, state->d);
 			cycles = 8;
 			break;
 		case 0x73:
 			/* LD (HL),E */
-			state->mem[state->hl] = state->e;
+			set_mem(state->hl, state->e);
 			cycles = 8;
 			break;
 		case 0x74:
 			/* LD (HL),H */
-			state->mem[state->hl] = state->h;
+			set_mem(state->hl, state->h);
 			cycles = 8;
 			break;
 		case 0x75:
 			/* LD (HL),L */
-			state->mem[state->hl] = state->l;
+			set_mem(state->hl, state->l);
 			cycles = 8;
 			break;
 		case 0x76:
@@ -1909,7 +1911,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x77:
 			/* LD (HL),A */
-			state->mem[state->hl] = state->a;
+			set_mem(state->hl, state->a);
 			cycles = 8;
 			break;
 		case 0x78:
@@ -2377,7 +2379,7 @@ int execute(struct gb_state *state) {
 			 * LDH (n),A
 			 * LD (n+$FF00),A
 			 */
-			state->mem[op[1] + 0xFF00] = state->a;
+			set_mem(op[1] + 0xFF00, state->a);
 			cycles = 12;
 			state->pc++;
 			break;
@@ -2388,7 +2390,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xE2:
 			/* LD (C+$FF00),A */
-			state->mem[state->c + 0xFF00] = state->a;
+			set_mem(state->c + 0xFF00, state->a);
 			cycles = 8;
 			state->pc++;
 			break;
@@ -2420,7 +2422,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xEA:
 			/* LD (nn),A */
-			state->mem[nn] = state->a;
+			set_mem(nn, state->a);
 			state->pc += 2;
 			cycles = 16;
 			break;
@@ -2440,7 +2442,7 @@ int execute(struct gb_state *state) {
 			 * LDH A,(n)
 			 * LD A,(n+$FF00)
 			 */
-			state->a = state->mem[op[1] + 0xFF00];
+			state->a = state->mem[op[1] + IO_PORTS];
 			cycles = 12;
 			state->pc++;
 			break;
@@ -2451,7 +2453,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xF2:
 			/* LD A,(C+$FF00) */
-			state->a = state->mem[state->c + 0xFF00];
+			state->a = state->mem[state->c + IO_PORTS];
 			cycles = 8;
 			state->pc++;
 			break;
@@ -2556,37 +2558,37 @@ void power_up(struct gb_state *state, int bootstrap_flag) {
 	state->h = 0x01;
 	state->l = 0x4D;
 	state->sp = 0xFFFE;
-	state->mem[0xFF05] = 0x00;
-	state->mem[0xFF06] = 0x00;
-	state->mem[0xFF07] = 0x00;
-	state->mem[0xFF10] = 0x80;
-	state->mem[0xFF11] = 0xBF;
-	state->mem[0xFF12] = 0xF3;
-	state->mem[0xFF14] = 0xBF;
-	state->mem[0xFF16] = 0x3F;
-	state->mem[0xFF17] = 0x00;
-	state->mem[0xFF19] = 0xBF;
-	state->mem[0xFF1A] = 0x7F;
-	state->mem[0xFF1B] = 0xFF;
-	state->mem[0xFF1C] = 0x9F;
-	state->mem[0xFF1E] = 0xBF;
-	state->mem[0xFF20] = 0xFF;
-	state->mem[0xFF21] = 0x00;
-	state->mem[0xFF22] = 0x00;
-	state->mem[0xFF23] = 0xBF;
-	state->mem[0xFF24] = 0x77;
-	state->mem[0xFF25] = 0xF3;
-	state->mem[0xFF26] = 0xF1;
-	state->mem[0xFF40] = 0x91;
-	state->mem[0xFF42] = 0x00;
-	state->mem[0xFF43] = 0x00;
-	state->mem[0xFF45] = 0x00;
-	state->mem[0xFF47] = 0xFC;
-	state->mem[0xFF48] = 0xFF;
-	state->mem[0xFF49] = 0xFF;
-	state->mem[0xFF4A] = 0x00;
-	state->mem[0xFF4B] = 0x00;
-	state->mem[0xFFFF] = 0x00;
+	set_mem(TIMA, 0x00);
+	set_mem(0xFF06, 0x00);
+	set_mem(0xFF07, 0x00);
+	set_mem(0xFF10, 0x80);
+	set_mem(0xFF11, 0xBF);
+	set_mem(0xFF12, 0xF3);
+	set_mem(0xFF14, 0xBF);
+	set_mem(0xFF16, 0x3F);
+	set_mem(0xFF17, 0x00);
+	set_mem(0xFF19, 0xBF);
+	set_mem(0xFF1A, 0x7F);
+	set_mem(0xFF1B, 0xFF);
+	set_mem(0xFF1C, 0x9F);
+	set_mem(0xFF1E, 0xBF);
+	set_mem(0xFF20, 0xFF);
+	set_mem(0xFF21, 0x00);
+	set_mem(0xFF22, 0x00);
+	set_mem(0xFF23, 0xBF);
+	set_mem(0xFF24, 0x77);
+	set_mem(0xFF25, 0xF3);
+	set_mem(0xFF26, 0xF1);
+	set_mem(0xFF40, 0x91);
+	set_mem(0xFF42, 0x00);
+	set_mem(0xFF43, 0x00);
+	set_mem(0xFF45, 0x00);
+	set_mem(0xFF47, 0xFC);
+	set_mem(0xFF48, 0xFF);
+	set_mem(0xFF49, 0xFF);
+	set_mem(0xFF4A, 0x00);
+	set_mem(0xFF4B, 0x00);
+	set_mem(0xFFFF, 0x00);
 
 	//custom
 	state->ime = 0;
@@ -2617,12 +2619,11 @@ void handle_interrupts(struct gb_state *state) {
 	}
 
 	if (addr != 0x000) {
-		printf("INTERUPT: %04X", addr);
 		state->ime = 0;
 		push(state, state->pc);
 		state->pc = addr;
 		state->halt = 0;
-		state->mem[0xFF0F] = 0;
+		set_mem(0xFF0F, 0);
 	}
 
 }
@@ -2688,6 +2689,7 @@ void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_fla
 	printf("BS:%d\n", bootstrap_flag);
 	struct gb_state *state = calloc(1, sizeof(struct gb_state));
 	state->mem = calloc(0x10000, sizeof(uint8_t));
+	gb_mem = state->mem;
 
 	memcpy(state->mem, cart_mem, cart_size);
 	uint8_t *cart_first256 = calloc(0x100, sizeof(uint8_t));
