@@ -4,6 +4,7 @@
 #include <memory.h>
 
 #include "mem.h"
+#include "display.h"
 
 #define CLOCK_SPEED 4195304
 #define MAX_CYCLES_PER_FRAME 70273
@@ -2734,6 +2735,9 @@ int main(int argc, char **argv) {
 	char *bootstrap_path;
 	char *cart_path;
 	uint8_t bootstrap_flag = 0;
+	if (start_display()) {
+		exit(1);
+	}
 	if (argc > 1) {
 		for (int i = 1; i < argc; i++) {
 			if (!strcmp(argv[i],"-c") && i < argc - 1) {
@@ -2764,5 +2768,6 @@ int main(int argc, char **argv) {
 	uint8_t *cart_mem = read_file(cart_path, &cart_size);
 
 	start(bs_mem, cart_mem, cart_size, bootstrap_flag);
+	end_display();
 	return 0;
 }
