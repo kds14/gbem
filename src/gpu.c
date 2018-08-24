@@ -10,11 +10,11 @@ static const int VBLANK_TIME = 20944;
 static const int REFRESH_TIME = 70224;
 
 static const int OAM_COUNT = 40;
-const int SPRITE_X_OFFSET = 8;
-const int SPRITE_Y_OFFSET = 16;
+static const int SPRITE_X_OFFSET = 8;
+static const int SPRITE_Y_OFFSET = 16;
 
 int current_time = 0;
-int current_line = 0;
+uint8_t current_line = 0x0;
 
 void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1) {
 	for (int i = 0; i < 8; i++) {
@@ -28,6 +28,8 @@ void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1) {
 }
 
 void draw_scan_line(uint8_t y) {
+	if (y >= 144)
+		return;
 	uint8_t obj_height = 16;
 	if (get_lcdc()->obj_size) {
 		obj_height *= 2;
@@ -51,6 +53,7 @@ int gpu_tick() {
 		// HDRAW
 		get_stat()->mode_flag = 10;
 		// TODO: mode_flag = 11;
+		set_mem(LY, current_line);
 		draw_scan_line(current_line++);
 	} else if (!(current_time % (SCANLINE_TIME - HBLANK_TIME))) {
 		// HBLANK

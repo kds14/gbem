@@ -73,7 +73,8 @@ void set_add16_flags(struct gb_state *state, uint16_t a, uint16_t b) {
 
 void set_add8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry) {
 	state->fn = 0;
-	state->fz = !(a + b);
+	state->fz = !(uint8_t)(a + b);
+	printf("%02X + %02X = %02X (%02X)\n", a, b, (uint8_t)(a + b), state->fz);
 	state->fh = ((a & 0x0F) + (b & 0x0F)) & 0x10;
 	if (use_carry) {
 		state->fc = (((uint16_t)a & 0xFF) + ((uint16_t)b & 0xFF)) & 0x100;
@@ -134,6 +135,7 @@ void orA(struct gb_state *state, uint8_t val) {
 }
 
 void cpA(struct gb_state *state, uint8_t val) {
+	printf("A: %02X vs VAL: %02X\n", state->a, val);
 	set_sub8_flags(state, state->a, val, 1);
 }
 
@@ -1317,7 +1319,8 @@ int execute_cb(struct gb_state *state) {
 			set(state, 7, &state->a);
 			break;
 		default:
-			printf("CB %02X instruction not implemented yet\n", state->mem[pc]);
+			printf("LINE %04X : CB %02X instruction not implemented yet\n", state->pc - 1, state->mem[pc]);
+			cycles = 0;
 			break;
 	}
 	return cycles;
@@ -1490,8 +1493,9 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x20:
 			/* JR NZ,n */
+			state->pc++;
 			if (!state->fz) {
-				state->pc += 1 + (int8_t)op[1];
+				state->pc += (int8_t)op[1];
 			}
 			cycles = 8;
 			break;
@@ -1548,8 +1552,9 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x28:
 			/* JR Z,n */
+			state->pc++;
 			if (state->fz) {
-				state->pc += 1 + op[1];
+				state->pc += op[1];
 			}
 			cycles = 8;
 			break;
@@ -1590,8 +1595,9 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x30:
 			/* JR NC,n */
+			state->pc++;
 			if (!state->fc) {
-				state->pc += 1 + (int8_t)op[1];
+				state->pc += (int8_t)op[1];
 			}
 			cycles = 8;
 			break;
@@ -1635,8 +1641,9 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x38:
 			/* JR C,n */
+			state->pc++;
 			if (state->fc) {
-				state->pc += 1 + (int8_t)op[1];
+				state->pc += (int8_t)op[1];
 			}
 			cycles = 8;
 			break;
@@ -2513,7 +2520,7 @@ int execute(struct gb_state *state) {
 			rst(state, 0x38);
 			break;
 		default:
-			printf("%02X not implemented yet\n", *op);
+			printf("LINE %04X : %02X not implemented yet\n", state->pc - 2, *op);
 			cycles = 0;
 			break;
 	};
@@ -2535,64 +2542,6 @@ void print_memory(struct gb_state *s) {
 		}
 		puts("");
 	}
-}
-
-void run_bootstrap(struct gb_state *state) {
-	while (state->mem[0xFF50] != 0x01 && state->pc < 0x100) {
-		execute(state);
-	}
-}
-
-void power_up(struct gb_state *state, int bootstrap_flag) {
-	state->pc = 0x0000;
-	if (bootstrap_flag) {
-		run_bootstrap(state);
-	}
-
-	state->a = 0x01;
-	state->f = 0xB0;
-	state->b = 0x00;
-	state->c = 0x13;
-	state->d = 0x00;
-	state->e = 0xD8;
-	state->h = 0x01;
-	state->l = 0x4D;
-	state->sp = 0xFFFE;
-	set_mem(TIMA, 0x00);
-	set_mem(0xFF06, 0x00);
-	set_mem(0xFF07, 0x00);
-	set_mem(0xFF10, 0x80);
-	set_mem(0xFF11, 0xBF);
-	set_mem(0xFF12, 0xF3);
-	set_mem(0xFF14, 0xBF);
-	set_mem(0xFF16, 0x3F);
-	set_mem(0xFF17, 0x00);
-	set_mem(0xFF19, 0xBF);
-	set_mem(0xFF1A, 0x7F);
-	set_mem(0xFF1B, 0xFF);
-	set_mem(0xFF1C, 0x9F);
-	set_mem(0xFF1E, 0xBF);
-	set_mem(0xFF20, 0xFF);
-	set_mem(0xFF21, 0x00);
-	set_mem(0xFF22, 0x00);
-	set_mem(0xFF23, 0xBF);
-	set_mem(0xFF24, 0x77);
-	set_mem(0xFF25, 0xF3);
-	set_mem(0xFF26, 0xF1);
-	set_mem(0xFF40, 0x91);
-	set_mem(0xFF42, 0x00);
-	set_mem(0xFF43, 0x00);
-	set_mem(0xFF45, 0x00);
-	set_mem(0xFF47, 0xFC);
-	set_mem(0xFF48, 0xFF);
-	set_mem(0xFF49, 0xFF);
-	set_mem(0xFF4A, 0x00);
-	set_mem(0xFF4B, 0x00);
-	set_mem(0xFFFF, 0x00);
-
-	//custom
-	state->ime = 0;
-	state->halt = 0;
 }
 
 void handle_interrupts(struct gb_state *state) {
@@ -2662,35 +2611,91 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 	}
 }
 
+void tick(struct gb_state *state, uint16_t *div_cycles, uint32_t *timer_cycles) {
+	int cycles = 0;
+	if (!state->halt) {
+		printf("%04X %02X\n", state->pc, state->mem[state->pc]);
+		cycles = execute(state);
+		if (cycles == 0) return;
+	}
+	handle_timers(state, cycles, div_cycles, timer_cycles);
+	handle_interrupts(state);
+	for (int i = 0; i < cycles; i++) {
+		if (gpu_tick())
+			return;
+	}
+}
+
+void run_bootstrap(struct gb_state *state) {
+	uint16_t div_cycles = 0;
+	uint32_t timer_cycles = 0;
+	while (state->mem[0xFF50] != 0x01)
+	{
+		tick(state, &div_cycles, &timer_cycles);
+	}
+}
+
+void power_up(struct gb_state *state, int bootstrap_flag) {
+	state->pc = 0x0000;
+	if (bootstrap_flag) {
+		set_mem(LY, 0x90); // needed for bootstrap
+		run_bootstrap(state);
+	}
+
+	state->a = 0x01;
+	state->f = 0xB0;
+	state->b = 0x00;
+	state->c = 0x13;
+	state->d = 0x00;
+	state->e = 0xD8;
+	state->h = 0x01;
+	state->l = 0x4D;
+	state->sp = 0xFFFE;
+	set_mem(TIMA, 0x00);
+	set_mem(0xFF06, 0x00);
+	set_mem(0xFF07, 0x00);
+	set_mem(0xFF10, 0x80);
+	set_mem(0xFF11, 0xBF);
+	set_mem(0xFF12, 0xF3);
+	set_mem(0xFF14, 0xBF);
+	set_mem(0xFF16, 0x3F);
+	set_mem(0xFF17, 0x00);
+	set_mem(0xFF19, 0xBF);
+	set_mem(0xFF1A, 0x7F);
+	set_mem(0xFF1B, 0xFF);
+	set_mem(0xFF1C, 0x9F);
+	set_mem(0xFF1E, 0xBF);
+	set_mem(0xFF20, 0xFF);
+	set_mem(0xFF21, 0x00);
+	set_mem(0xFF22, 0x00);
+	set_mem(0xFF23, 0xBF);
+	set_mem(0xFF24, 0x77);
+	set_mem(0xFF25, 0xF3);
+	set_mem(0xFF26, 0xF1);
+	set_mem(0xFF40, 0x91);
+	set_mem(0xFF42, 0x00);
+	set_mem(0xFF43, 0x00);
+	set_mem(0xFF45, 0x00);
+	set_mem(0xFF47, 0xFC);
+	set_mem(0xFF48, 0xFF);
+	set_mem(0xFF49, 0xFF);
+	set_mem(0xFF4A, 0x00);
+	set_mem(0xFF4B, 0x00);
+	set_mem(0xFFFF, 0x00);
+
+	//custom
+	state->ime = 0;
+	state->halt = 0;
+}
+
+
+
 void instruction_cycle(struct gb_state *state) {
 	uint16_t div_cycles = 0;
 	uint32_t timer_cycles = 0;
-	while (state->mem[state->pc] != 0x76) {
-		uint32_t currentCycles = 0;
-		while (currentCycles < MAX_CYCLES_PER_FRAME)
-		{
-			if (state->mem[state->pc] == 0x76)
-			{
-				break;
-			}
-			int cycles = 0;
-			if (state->mem[state->pc] == 0xD9) {
-				//printf("OP: %02X\n", state->mem[state->pc]);
-				//print_registers(state);
-				//print_memory(state);
-				//return;
-			}
-			if (!state->halt) {
-				cycles = execute(state);
-				currentCycles += cycles;
-			}
-			handle_timers(state, cycles, &div_cycles, &timer_cycles);
-			handle_interrupts(state);
-			for (int i = 0; i < cycles; i++) {
-				if (gpu_tick())
-					return;
-			}
-		}
+	while (1)
+	{
+		tick(state, &div_cycles, &timer_cycles);
 	}
 }
 
@@ -2708,6 +2713,7 @@ void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_fla
 	}
 
 	power_up(state, bootstrap_flag);
+	printf("Powered up");
 	if (bootstrap_flag) {
 		memcpy(state->mem, cart_first256, 0x100);
 		free(bs_mem);
