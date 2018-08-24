@@ -6,7 +6,7 @@
 #include "mem.h"
 #include "display.h"
 
-#define CLOCK_SPEED 4195304
+static const int CLOCK_SPEED = 4195304;
 static const int MAX_CYCLES_PER_FRAME = 70224;
 
 /*
@@ -74,7 +74,7 @@ void set_add16_flags(struct gb_state *state, uint16_t a, uint16_t b) {
 void set_add8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry) {
 	state->fn = 0;
 	state->fz = !(uint8_t)(a + b);
-	printf("%02X + %02X = %02X (%02X)\n", a, b, (uint8_t)(a + b), state->fz);
+	//printf("%02X + %02X = %02X (%02X)\n", a, b, (uint8_t)(a + b), state->fz);
 	state->fh = ((a & 0x0F) + (b & 0x0F)) & 0x10;
 	if (use_carry) {
 		state->fc = (((uint16_t)a & 0xFF) + ((uint16_t)b & 0xFF)) & 0x100;
@@ -135,7 +135,6 @@ void orA(struct gb_state *state, uint8_t val) {
 }
 
 void cpA(struct gb_state *state, uint8_t val) {
-	printf("A: %02X vs VAL: %02X\n", state->a, val);
 	set_sub8_flags(state, state->a, val, 1);
 }
 
@@ -1319,7 +1318,7 @@ int execute_cb(struct gb_state *state) {
 			set(state, 7, &state->a);
 			break;
 		default:
-			printf("LINE %04X : CB %02X instruction not implemented yet\n", state->pc - 1, state->mem[pc]);
+			printf("%04X : CB %02X instruction not implemented yet\n", state->pc - 1, state->mem[pc]);
 			cycles = 0;
 			break;
 	}
@@ -2386,7 +2385,7 @@ int execute(struct gb_state *state) {
 			 * LDH (n),A
 			 * LD (n+$FF00),A
 			 */
-			set_mem(op[1] + 0xFF00, state->a);
+			set_mem(op[1] + IO_PORTS, state->a);
 			cycles = 12;
 			state->pc++;
 			break;
@@ -2397,7 +2396,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xE2:
 			/* LD (C+$FF00),A */
-			set_mem(state->c + 0xFF00, state->a);
+			set_mem(state->c + IO_PORTS, state->a);
 			cycles = 8;
 			state->pc++;
 			break;
@@ -2520,7 +2519,7 @@ int execute(struct gb_state *state) {
 			rst(state, 0x38);
 			break;
 		default:
-			printf("LINE %04X : %02X not implemented yet\n", state->pc - 2, *op);
+			printf("%04X : %02X not implemented yet\n", state->pc - 2, *op);
 			cycles = 0;
 			break;
 	};
@@ -2547,25 +2546,25 @@ void print_memory(struct gb_state *s) {
 void handle_interrupts(struct gb_state *state) {
 	if (!state->ime)
 		return;
-	uint8_t ie = state->mem[0xFFFF];
-	uint8_t iff = state->mem[0xFF0F];
+	uint8_t ie = state->mem[IE];
+	uint8_t iff = state->mem[IF];
 	uint16_t addr = 0x0000;
 	//printf("IE: %02X, IF: %02X, IME: %02X", ie, iff, state->ime);
 	if (iff & ie & 0x01) {
 		// V-Blank
-		addr = 0x0040;
+		addr = VBLANK_ADDR;
 	} else if (iff & ie & 0x02) {
 		// LCDC
-		addr = 0x0048;
+		addr = LCDC_ADDR;
 	} else if (iff & ie & 0x04) {
 		// Timer overflow
-		addr = 0x0050;
+		addr = TIMER_OVERFLOW_ADDR;
 	} else if (iff & ie & 0x08) {
 		// Serial I/O transfer complete
-		addr = 0x0058;
+		addr = SERIAL_IO_TRANS_ADDR;
 	} else if (iff & ie & 0x10) {
 		// Transition from High to Low of Pin number P10-P13
-		addr = 0x0060;
+		addr = P10_P13_TRANSITION_ADDR;
 	}
 
 	if (addr != 0x000) {
@@ -2573,7 +2572,7 @@ void handle_interrupts(struct gb_state *state) {
 		push(state, state->pc);
 		state->pc = addr;
 		state->halt = 0;
-		set_mem(0xFF0F, 0);
+		set_mem(IF, 0);
 	}
 
 }
@@ -2583,9 +2582,9 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 	*timer_cycles += cycles;
 	if (*div_cycles >= 16384) {
 		*div_cycles = 0;
-		state->mem[0xFF04] += 1;
+		state->mem[DIV] += 1;
 	}
-	if ((state->mem[0xFF07] & 0x04) != 0x04)
+	if ((state->mem[TAC] & 0x04) != 0x04)
 		return;
 	uint32_t tima_freq = 2147483647;
 	switch (state->mem[0xFF07] & 0x03) {
@@ -2604,9 +2603,9 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 	}
 	if (*timer_cycles >= tima_freq) {
 		*timer_cycles = 0;
-		state->mem[0xFF05] += 1;
-		if (state->mem[0xFF05] == 0xFF) {
-			state->mem[0xFF0F] |= 0x04;
+		state->mem[TIMA] += 1;
+		if (state->mem[TIMA] == 0xFF) {
+			state->mem[IF] |= 0x04;
 		}
 	}
 }
@@ -2614,7 +2613,6 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 void tick(struct gb_state *state, uint16_t *div_cycles, uint32_t *timer_cycles) {
 	int cycles = 0;
 	if (!state->halt) {
-		printf("%04X %02X\n", state->pc, state->mem[state->pc]);
 		cycles = execute(state);
 		if (cycles == 0) return;
 	}
@@ -2652,36 +2650,36 @@ void power_up(struct gb_state *state, int bootstrap_flag) {
 	state->l = 0x4D;
 	state->sp = 0xFFFE;
 	set_mem(TIMA, 0x00);
-	set_mem(0xFF06, 0x00);
-	set_mem(0xFF07, 0x00);
-	set_mem(0xFF10, 0x80);
-	set_mem(0xFF11, 0xBF);
-	set_mem(0xFF12, 0xF3);
-	set_mem(0xFF14, 0xBF);
-	set_mem(0xFF16, 0x3F);
-	set_mem(0xFF17, 0x00);
-	set_mem(0xFF19, 0xBF);
-	set_mem(0xFF1A, 0x7F);
-	set_mem(0xFF1B, 0xFF);
-	set_mem(0xFF1C, 0x9F);
-	set_mem(0xFF1E, 0xBF);
-	set_mem(0xFF20, 0xFF);
-	set_mem(0xFF21, 0x00);
-	set_mem(0xFF22, 0x00);
-	set_mem(0xFF23, 0xBF);
-	set_mem(0xFF24, 0x77);
-	set_mem(0xFF25, 0xF3);
-	set_mem(0xFF26, 0xF1);
-	set_mem(0xFF40, 0x91);
-	set_mem(0xFF42, 0x00);
-	set_mem(0xFF43, 0x00);
-	set_mem(0xFF45, 0x00);
-	set_mem(0xFF47, 0xFC);
-	set_mem(0xFF48, 0xFF);
-	set_mem(0xFF49, 0xFF);
-	set_mem(0xFF4A, 0x00);
-	set_mem(0xFF4B, 0x00);
-	set_mem(0xFFFF, 0x00);
+	set_mem(TMA, 0x00);
+	set_mem(TAC, 0x00);
+	set_mem(NR10, 0x80);
+	set_mem(NR11, 0xBF);
+	set_mem(NR12, 0xF3);
+	set_mem(NR14, 0xBF);
+	set_mem(NR21, 0x3F);
+	set_mem(NR22, 0x00);
+	set_mem(NR24, 0xBF);
+	set_mem(NR30, 0x7F);
+	set_mem(NR31, 0xFF);
+	set_mem(NR32, 0x9F);
+	set_mem(NR34, 0xBF);
+	set_mem(NR41, 0xFF);
+	set_mem(NR42, 0x00);
+	set_mem(NR43, 0x00);
+	set_mem(NR44, 0xBF);
+	set_mem(NR50, 0x77);
+	set_mem(NR51, 0xF3);
+	set_mem(NR52, 0xF1);
+	set_mem(LCDC, 0x91);
+	set_mem(SCY, 0x00);
+	set_mem(SCX, 0x00);
+	set_mem(LYC, 0x00);
+	set_mem(BGP, 0xFC);
+	set_mem(OBP0, 0xFF);
+	set_mem(OBP1, 0xFF);
+	set_mem(WY, 0x00);
+	set_mem(WX, 0x00);
+	set_mem(IE, 0x00);
 
 	//custom
 	state->ime = 0;
@@ -2713,7 +2711,7 @@ void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_fla
 	}
 
 	power_up(state, bootstrap_flag);
-	printf("Powered up");
+
 	if (bootstrap_flag) {
 		memcpy(state->mem, cart_first256, 0x100);
 		free(bs_mem);
@@ -2728,7 +2726,6 @@ void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_fla
 
 	print_registers(state);
 
-	//print_memory(state);
 }
 
 uint8_t *read_file(char *path, long *size) {

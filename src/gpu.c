@@ -15,6 +15,7 @@ static const int SPRITE_Y_OFFSET = 16;
 
 int current_time = 0;
 uint8_t current_line = 0x0;
+int vblank = 0;
 
 void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1) {
 	for (int i = 0; i < 8; i++) {
@@ -51,7 +52,8 @@ void draw_scan_line(uint8_t y) {
 int gpu_tick() {
 	if (!(current_time % SCANLINE_TIME)) {
 		// HDRAW
-		get_stat()->mode_flag = 10;
+		if (!vblank)
+			get_stat()->mode_flag = 10;
 		// TODO: mode_flag = 11;
 		set_mem(LY, current_line);
 		draw_scan_line(current_line++);
@@ -63,6 +65,7 @@ int gpu_tick() {
 		// VBLANK
 		get_if()->vblank = 1;
 		get_stat()->mode_flag = 01;
+		vblank = 1;
 	}
 	if (!(current_time % REFRESH_TIME) && current_time) {
 		// END
@@ -70,6 +73,9 @@ int gpu_tick() {
 		get_if()->vblank = 0;
 		current_time = -1;
 		current_line = 0;
+		set_mem(LY, current_line);
+		get_stat()->mode_flag = 10;
+		vblank = 0;
 	}
 	current_time += PIXEL_TIME;
 	return handle_display_events();

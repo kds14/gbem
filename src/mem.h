@@ -65,6 +65,13 @@
 /* Distance between ram and echo ram */
 #define ECHO_OFFSET 0x2000
 
+/* Interrupt addresses */
+#define VBLANK_ADDR 0x0040
+#define LCDC_ADDR  0x0048
+#define TIMER_OVERFLOW_ADDR  0x0050
+#define SERIAL_IO_TRANS_ADDR  0x0058
+#define P10_P13_TRANSITION_ADDR  0x0060
+
 struct lcdc
 {
 	uint8_t bg_win_display : 1; // 0: off, 1: on
