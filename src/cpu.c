@@ -2610,34 +2610,41 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 	}
 }
 
-void tick(struct gb_state *state, uint16_t *div_cycles, uint32_t *timer_cycles) {
+int tick(struct gb_state *state, uint16_t *div_cycles, uint32_t *timer_cycles) {
 	int cycles = 0;
 	if (!state->halt) {
 		cycles = execute(state);
-		if (cycles == 0) return;
+		if (cycles == 0) return 1;
 	}
 	handle_timers(state, cycles, div_cycles, timer_cycles);
 	handle_interrupts(state);
 	for (int i = 0; i < cycles; i++) {
 		if (gpu_tick())
-			return;
+			return 1;
 	}
+	return 0;
 }
 
-void run_bootstrap(struct gb_state *state) {
+int run_bootstrap(struct gb_state *state) {
 	uint16_t div_cycles = 0;
 	uint32_t timer_cycles = 0;
 	while (state->mem[0xFF50] != 0x01)
 	{
-		tick(state, &div_cycles, &timer_cycles);
+		if (tick(state, &div_cycles, &timer_cycles)) {
+			return 1;
+		}
 	}
+	return 0;
 }
 
-void power_up(struct gb_state *state, int bootstrap_flag) {
+int power_up(struct gb_state *state, int bootstrap_flag) {
 	state->pc = 0x0000;
 	if (bootstrap_flag) {
 		set_mem(LY, 0x90); // needed for bootstrap
-		run_bootstrap(state);
+		if (run_bootstrap(state)) {
+			puts("Bootstrap exited early\n");
+			return 1;
+		}
 	}
 
 	state->a = 0x01;
@@ -2684,6 +2691,7 @@ void power_up(struct gb_state *state, int bootstrap_flag) {
 	//custom
 	state->ime = 0;
 	state->halt = 0;
+	return 0;
 }
 
 
@@ -2710,7 +2718,9 @@ void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_fla
 		memcpy(state->mem, bs_mem, 0x100);
 	}
 
-	power_up(state, bootstrap_flag);
+	if (power_up(state, bootstrap_flag)) {
+		return;
+	}
 
 	if (bootstrap_flag) {
 		memcpy(state->mem, cart_first256, 0x100);

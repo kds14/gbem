@@ -60,6 +60,8 @@
 
 /* Video memory map sections */
 #define SPRITE_TILES 0x8000
+#define BG_MAP_DATA0 0x9800
+#define BG_MAP_DATA1 0x9C00
 #define OAM 0xFE00
 
 /* Distance between ram and echo ram */
@@ -111,6 +113,7 @@ struct stat
 		uint8_t mode10 : 1;
 		uint8_t lcy_eq_ly_coinc : 1;
 	};
+	uint8_t none : 1;
 };
 
 struct interrupt_flag

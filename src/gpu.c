@@ -28,17 +28,20 @@ void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1) {
 	}
 }
 
-void draw_scan_line(uint8_t y) {
-	if (y >= 144)
+void draw_sprites(uint8_t y) {
+	struct lcdc *lcdc = get_lcdc();
+	if (!lcdc->obj_display)
 		return;
+
 	uint8_t obj_height = 16;
-	if (get_lcdc()->obj_size) {
+	if (lcdc->obj_size)
 		obj_height *= 2;
-	}
+
 	for (int i = 0; i < 40; i++) {
 		struct sprite_attr *sprite_attr = get_sprite_attr(i);
 		uint8_t y_start = sprite_attr->y - SPRITE_Y_OFFSET;
 		uint8_t x_start = sprite_attr->x - SPRITE_X_OFFSET;
+
 		if (y_start <= y && y_start + obj_height >= y) {
 			uint8_t line = y - y_start;
 			uint8_t *data = get_sprite_data(sprite_attr->pattern);
@@ -49,7 +52,24 @@ void draw_scan_line(uint8_t y) {
 	}
 }
 
+void draw_background(uint8_t y) {
+	struct lcdc *lcdc = get_lcdc();
+	if (!lcdc->bg_win_display)
+		return;
+}
+
+void draw_scan_line(uint8_t y) {
+	if (y >= 144)
+		return;
+	draw_background(y);
+	draw_sprites(y);
+}
+
 int gpu_tick() {
+	struct lcdc *lcdc = get_lcdc();
+	if (lcdc->win_display)
+		return;
+
 	if (!(current_time % SCANLINE_TIME)) {
 		// HDRAW
 		if (!vblank)
@@ -61,12 +81,14 @@ int gpu_tick() {
 		// HBLANK
 		get_stat()->mode_flag = 00;
 	} 
+
 	if (!(current_time % VDRAW_TIME) && current_time) {
 		// VBLANK
 		get_if()->vblank = 1;
 		get_stat()->mode_flag = 01;
 		vblank = 1;
 	}
+
 	if (!(current_time % REFRESH_TIME) && current_time) {
 		// END
 		display_render();
