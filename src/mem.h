@@ -58,8 +58,73 @@
 #define IO_PORTS 0xFF00
 #define INTERNAL_RAM1 0xFF80
 
+/* Video memory map sections */
+#define SPRITE_TILES 0x8000
+#define OAM 0xFE00
+
 /* Distance between ram and echo ram */
 #define ECHO_OFFSET 0x2000
+
+struct lcdc
+{
+	uint8_t bg_win_display : 1; // 0: off, 1: on
+	uint8_t obj_display : 1; // 0: off, 1: on
+	uint8_t obj_size : 1; // 0: 8x8, 1: 8x16
+	uint8_t bg_tile_map_loc : 1; // 0: 0x9800-0x9BFF, 1: 0x9C00-0x9FFF
+	uint8_t bg_win_tile_loc : 1; // 0: 0x8800-0x97FF, 1: 0x800-0x8FFF
+	uint8_t win_display : 1; // 0: off, 1: on
+	uint8_t win_tile_map_loc : 1; // 0: 0x9800-0x9BFF, 1: 0x9C00-0x9FFF
+	uint8_t lcd_control_op : 1; // 0: stop, 1: op
+};
+
+struct sprite_attr
+{
+	uint8_t y; // y position
+	uint8_t x; // x position
+	uint8_t pattern; // 0-255 unsigned
+	union {
+		uint8_t flags;
+		struct {
+			uint8_t none : 4; // first 4 lsb not used
+			uint8_t palette : 1;
+			uint8_t xflip : 1;
+			uint8_t yflip : 1;
+			uint8_t priority : 1;
+		};
+	};
+};
+
+struct stat
+{
+	uint8_t mode_flag: 2;
+	uint8_t coincidence : 1;
+	struct int_selection {
+		uint8_t mode00 : 1;
+		uint8_t mode01 : 1;
+		uint8_t mode10 : 1;
+		uint8_t lcy_eq_ly_coinc : 1;
+	};
+};
+
+struct interrupt_flag
+{
+	uint8_t vblank : 1;
+	uint8_t lcdc : 1;
+	uint8_t timer_overflow : 1;
+	uint8_t serial_io : 1;
+	uint8_t p10p13_transfer : 1;
+	uint8_t none : 3;
+};
+
+struct sprite_attr *get_sprite_attr(int index);
+
+struct lcdc *get_lcdc();
+
+struct stat *get_stat();
+
+struct interrupt_flag *get_if();
+
+uint8_t *get_sprite_data(uint8_t index);
 
 uint8_t *gb_mem;
 

@@ -7,7 +7,7 @@
 #include "display.h"
 
 #define CLOCK_SPEED 4195304
-#define MAX_CYCLES_PER_FRAME 70273
+static const int MAX_CYCLES_PER_FRAME = 70224;
 
 /*
  * Registers:
@@ -134,7 +134,7 @@ void orA(struct gb_state *state, uint8_t val) {
 }
 
 void cpA(struct gb_state *state, uint8_t val) {
-	set_sub8_flags(state, state->a, state->b, 1);
+	set_sub8_flags(state, state->a, val, 1);
 }
 
 void pop(struct gb_state *state, uint16_t *dest) {
@@ -1330,7 +1330,6 @@ int execute_cb(struct gb_state *state) {
 int execute(struct gb_state *state) {
 	int pc = state->pc;
 	uint8_t *op = &state->mem[pc];
-	//printf("OP:%02x\n", op[0]);
 	int cycles = 4;
 	state->pc++;
 	uint16_t nn = (op[2] << 8) | op[1];
@@ -2602,6 +2601,7 @@ void handle_interrupts(struct gb_state *state) {
 	uint8_t ie = state->mem[0xFFFF];
 	uint8_t iff = state->mem[0xFF0F];
 	uint16_t addr = 0x0000;
+	//printf("IE: %02X, IF: %02X, IME: %02X", ie, iff, state->ime);
 	if (iff & ie & 0x01) {
 		// V-Blank
 		addr = 0x0040;
@@ -2629,11 +2629,11 @@ void handle_interrupts(struct gb_state *state) {
 
 }
 
-void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *divCycles, uint32_t *timerCycles) {
-	*divCycles += cycles;
-	*timerCycles += cycles;
-	if (*divCycles >= 16384) {
-		*divCycles = 0;
+void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
+	*div_cycles += cycles;
+	*timer_cycles += cycles;
+	if (*div_cycles >= 16384) {
+		*div_cycles = 0;
 		state->mem[0xFF04] += 1;
 	}
 	if ((state->mem[0xFF07] & 0x04) != 0x04)
@@ -2653,8 +2653,8 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *divCycles, 
 			tima_freq = 16384;
 			break;
 	}
-	if (*timerCycles >= tima_freq) {
-		*timerCycles = 0;
+	if (*timer_cycles >= tima_freq) {
+		*timer_cycles = 0;
 		state->mem[0xFF05] += 1;
 		if (state->mem[0xFF05] == 0xFF) {
 			state->mem[0xFF0F] |= 0x04;
@@ -2663,31 +2663,39 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *divCycles, 
 }
 
 void instruction_cycle(struct gb_state *state) {
-	uint16_t divCycles = 0;
-	uint32_t timerCycles = 0;
+	uint16_t div_cycles = 0;
+	uint32_t timer_cycles = 0;
 	while (state->mem[state->pc] != 0x76) {
 		uint32_t currentCycles = 0;
-		while (currentCycles < MAX_CYCLES_PER_FRAME && state->pc < 0x100)
+		while (currentCycles < MAX_CYCLES_PER_FRAME)
 		{
 			if (state->mem[state->pc] == 0x76)
 			{
 				break;
 			}
 			int cycles = 0;
+			if (state->mem[state->pc] == 0xD9) {
+				//printf("OP: %02X\n", state->mem[state->pc]);
+				//print_registers(state);
+				//print_memory(state);
+				//return;
+			}
 			if (!state->halt) {
 				cycles = execute(state);
 				currentCycles += cycles;
 			}
-			handle_timers(state, cycles, &divCycles, &timerCycles);
+			handle_timers(state, cycles, &div_cycles, &timer_cycles);
 			handle_interrupts(state);
-			//print_registers(state);
+			for (int i = 0; i < cycles; i++) {
+				if (gpu_tick())
+					return;
+			}
 		}
 	}
 }
 
 
 void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_flag) {
-	printf("BS:%d\n", bootstrap_flag);
 	struct gb_state *state = calloc(1, sizeof(struct gb_state));
 	state->mem = calloc(0x10000, sizeof(uint8_t));
 	gb_mem = state->mem;
@@ -2698,8 +2706,6 @@ void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_fla
 	if (bootstrap_flag) {
 		memcpy(state->mem, bs_mem, 0x100);
 	}
-
-	print_registers(state);
 
 	power_up(state, bootstrap_flag);
 	if (bootstrap_flag) {
@@ -2716,7 +2722,7 @@ void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_fla
 
 	print_registers(state);
 
-	print_memory(state);
+	//print_memory(state);
 }
 
 uint8_t *read_file(char *path, long *size) {
@@ -2768,6 +2774,7 @@ int main(int argc, char **argv) {
 	uint8_t *cart_mem = read_file(cart_path, &cart_size);
 
 	start(bs_mem, cart_mem, cart_size, bootstrap_flag);
+
 	end_display();
 	return 0;
 }

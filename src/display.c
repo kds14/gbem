@@ -1,10 +1,11 @@
 #include "SDL.h"
 
 SDL_Window *window = NULL;
-SDL_Surface *screenSurface = NULL;
+//SDL_Surface *screenSurface = NULL;
+SDL_Renderer *renderer = NULL;
 
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
+const int SCREEN_WIDTH = 160;
+const int SCREEN_HEIGHT = 144;
 
 
 int start_display() {
@@ -12,21 +13,42 @@ int start_display() {
 		printf( "SDL could not initialize! SDL_Error: %s\n", SDL_GetError() );
 		return 1;
 	} else {
-		window = SDL_CreateWindow("gbem", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-		if (window == NULL) {
-			printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() );
+		SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, 0, &window, &renderer);
+		if (window == NULL || renderer == NULL) {
+			printf( "Window or renderer could not be created! SDL_Error: %s\n", SDL_GetError() );
 			return 1;
 		} else {
-			screenSurface = SDL_GetWindowSurface(window);
-			SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0xFF, 0xFF, 0xFF));
-			SDL_UpdateWindowSurface(window);
-			SDL_Delay(5000);
+			SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+			SDL_RenderClear(renderer);
+			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+			SDL_RenderPresent(renderer);
 		}
 	}
 	return 0;
 }
 
+void draw_pixel(int x, int y) {
+	SDL_RenderDrawPoint(renderer, x, y);
+}
+
+void display_render() {
+	SDL_RenderPresent(renderer);
+}
+
 void end_display() {
+	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 }
+
+int handle_display_events() {
+	SDL_Event event;
+	if (SDL_PollEvent(&event)) {
+		if (event.type == SDL_QUIT) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+
