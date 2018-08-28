@@ -1,4 +1,5 @@
 #include "SDL.h"
+#include "display.h"
 
 SDL_Window *window = NULL;
 //SDL_Surface *screenSurface = NULL;
@@ -28,11 +29,17 @@ int start_display() {
 }
 
 void draw_pixel(int x, int y) {
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 	SDL_RenderDrawPoint(renderer, x, y);
 }
 
 void display_render() {
 	SDL_RenderPresent(renderer);
+}
+
+void clear_renderer() {
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+	SDL_RenderClear(renderer);
 }
 
 void end_display() {
@@ -41,11 +48,18 @@ void end_display() {
 	SDL_Quit();
 }
 
-int handle_display_events() {
+int handle_display_events(clock_t *start) {
 	SDL_Event event;
 	if (SDL_PollEvent(&event)) {
 		if (event.type == SDL_QUIT) {
 			return 1;
+		}
+	}
+	if (start != NULL) {
+		clock_t diff = clock() - *start;
+		int ms = 17 - (double)diff * 1000 / CLOCKS_PER_SEC;
+		if (ms > 0) {
+			SDL_Delay(ms);
 		}
 	}
 	return 0;

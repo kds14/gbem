@@ -2,9 +2,9 @@
 #include <stdint.h>
 #include <malloc.h>
 #include <memory.h>
+#include <time.h>
 
 #include "mem.h"
-#include "display.h"
 
 static const int CLOCK_SPEED = 4195304;
 static const int MAX_CYCLES_PER_FRAME = 70224;
@@ -245,6 +245,11 @@ void res(struct gb_state *state, uint8_t bit, uint8_t *reg) {
 
 void set(struct gb_state *state, uint8_t bit, uint8_t *reg) {
 	*reg |= (0x01 << bit);
+}
+
+void print_registers(struct gb_state *state) {
+	printf("A: %02X, B: %02X, C: %02X, D: %02X, E: %02X, F: %02X, H: %02X, L: %02X, SP: %04X, PC: %04X\n", state->a, state->b, state->c, state->d, state->e, state->f, state->h, state->l, state->sp, state->pc);
+	printf("FLAGS: Z:%d N:%d H:%d C:%d None:%d\n", state->fz, state->fn, state->fh, state->fc, state->fl );
 }
 
 int execute_cb(struct gb_state *state) {
@@ -1507,9 +1512,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x22:
 			/* LD (HL+),A */
-			set_mem(state->hl, state->a);
+			set_mem(state->hl++, state->a);
 			cycles = 8;
-			state->hl++;
 			break;
 		case 0x23:
 			/* INC HL */
@@ -1565,9 +1569,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x2A:
 			/* LD A,(HL+) */
-			state->a = state->mem[state->hl];
+			state->a = state->mem[state->hl++];
 			cycles = 8;
-			state->hl++;
 			break;
 		case 0x2B:
 			/* DEC HL */
@@ -2527,10 +2530,6 @@ int execute(struct gb_state *state) {
 }
 
 
-void print_registers(struct gb_state *state) {
-	printf("A: %02X, B: %02X, C: %02X, D: %02X, E: %02X, F: %02X, H: %02X, L: %02X, SP: %04X, PC: %04X\n", state->a, state->b, state->c, state->d, state->e, state->f, state->h, state->l, state->sp, state->pc);
-	printf("FLAGS: Z:%d N:%d H:%d C:%d None:%d\n", state->fz, state->fn, state->fh, state->fc, state->fl );
-}
 
 void print_memory(struct gb_state *s) {
 	int column_length = 0x40;
@@ -2610,27 +2609,36 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 	}
 }
 
-int tick(struct gb_state *state, uint16_t *div_cycles, uint32_t *timer_cycles) {
+int tick(struct gb_state *state, clock_t *clock_start, int *total_cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
 	int cycles = 0;
 	if (!state->halt) {
 		cycles = execute(state);
 		if (cycles == 0) return 1;
 	}
-	handle_timers(state, cycles, div_cycles, timer_cycles);
-	handle_interrupts(state);
 	for (int i = 0; i < cycles; i++) {
-		if (gpu_tick())
+		clock_t *current_clock = NULL;
+		if (++*total_cycles >= MAX_CYCLES_PER_FRAME)
+		{
+			current_clock = clock_start;
+			*total_cycles = 0;
+			*clock_start = clock();
+		}
+		if (gpu_tick(current_clock))
 			return 1;
 	}
+	handle_timers(state, cycles, div_cycles, timer_cycles);
+	handle_interrupts(state);
 	return 0;
 }
 
 int run_bootstrap(struct gb_state *state) {
 	uint16_t div_cycles = 0;
 	uint32_t timer_cycles = 0;
+	int total_cycles = 0;
+	clock_t clock_start = clock();
 	while (state->mem[0xFF50] != 0x01)
 	{
-		if (tick(state, &div_cycles, &timer_cycles)) {
+		if (tick(state, &clock_start, &total_cycles, &div_cycles, &timer_cycles)) {
 			return 1;
 		}
 	}
@@ -2645,7 +2653,11 @@ int power_up(struct gb_state *state, int bootstrap_flag) {
 			puts("Bootstrap exited early\n");
 			return 1;
 		}
+		print_memory(state);
+		printf("SCY: %02X\n", state->mem[SCY]);
+		printf("SCX: %02X\n", state->mem[SCX]);
 	}
+	return 1;
 
 	state->a = 0x01;
 	state->f = 0xB0;
@@ -2699,9 +2711,13 @@ int power_up(struct gb_state *state, int bootstrap_flag) {
 void instruction_cycle(struct gb_state *state) {
 	uint16_t div_cycles = 0;
 	uint32_t timer_cycles = 0;
+	int total_cycles = 0;
+	clock_t clock_start = clock();
 	while (1)
 	{
-		tick(state, &div_cycles, &timer_cycles);
+		if (tick(state, &clock_start, &total_cycles, &div_cycles, &timer_cycles)) {
+			return;
+		}
 	}
 }
 

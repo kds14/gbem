@@ -26,10 +26,18 @@ struct sprite_attr *get_sprite_attr(int index) {
 	return (struct sprite_attr *)&gb_mem[OAM + index * sizeof(struct sprite_attr)];
 }
 
-uint8_t *get_sprite_data(uint8_t index) {
+uint8_t *get_sprite_data(uint8_t index, int bg) {
 	int size = 16;
-	if (get_lcdc()->obj_size) {
+	if (get_lcdc()->obj_size && !bg) {
 		size *= 2;
 	}
-	return &gb_mem[SPRITE_TILES + index * size];
+	return &gb_mem[SPRITE_TILES + (uint8_t)index * size];
+}
+
+uint8_t *get_tile_data(uint8_t index, int size, int bg_tile_sel) {
+	if (bg_tile_sel) {
+		return &gb_mem[SPRITE_TILES + (uint8_t)index * size];
+	} else {
+		return &gb_mem[BG_TILES + 0x800 + (int8_t)index * size];
+	}
 }
