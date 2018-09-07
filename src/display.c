@@ -42,24 +42,27 @@ void clear_renderer() {
 	SDL_RenderClear(renderer);
 }
 
+void wait_clear_renderer(uint32_t *frame_time) {
+	int wait_time = 17 - SDL_GetTicks() + *frame_time;
+	if (wait_time > 0) {
+		SDL_Delay(wait_time);
+	}
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+	SDL_RenderClear(renderer);
+	*frame_time = SDL_GetTicks();
+}
+
 void end_display() {
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 }
 
-int handle_display_events(clock_t *start) {
+int handle_display_events() {
 	SDL_Event event;
 	if (SDL_PollEvent(&event)) {
 		if (event.type == SDL_QUIT) {
 			return 1;
-		}
-	}
-	if (start != NULL) {
-		clock_t diff = clock() - *start;
-		int ms = 17 - (double)diff * 1000 / CLOCKS_PER_SEC;
-		if (ms > 0) {
-			SDL_Delay(ms);
 		}
 	}
 	return 0;

@@ -2401,7 +2401,6 @@ int execute(struct gb_state *state) {
 			/* LD (C+$FF00),A */
 			set_mem(state->c + IO_PORTS, state->a);
 			cycles = 8;
-			state->pc++;
 			break;
 		case 0xE5:
 			/* PUSH HL */
@@ -2464,7 +2463,6 @@ int execute(struct gb_state *state) {
 			/* LD A,(C+$FF00) */
 			state->a = state->mem[state->c + IO_PORTS];
 			cycles = 8;
-			state->pc++;
 			break;
 		case 0xF3:
 			/* DI */
@@ -2609,21 +2607,21 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 	}
 }
 
-int tick(struct gb_state *state, clock_t *clock_start, int *total_cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
+//uint32_t frame_count = 0;
+
+int tick(struct gb_state *state, int *total_cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
 	int cycles = 0;
 	if (!state->halt) {
 		cycles = execute(state);
 		if (cycles == 0) return 1;
 	}
 	for (int i = 0; i < cycles; i++) {
-		clock_t *current_clock = NULL;
-		if (++*total_cycles >= MAX_CYCLES_PER_FRAME)
+		if (++*total_cycles > MAX_CYCLES_PER_FRAME)
 		{
-			current_clock = clock_start;
 			*total_cycles = 0;
-			*clock_start = clock();
+			//frame_count++;
 		}
-		if (gpu_tick(current_clock))
+		if (gpu_tick())
 			return 1;
 	}
 	handle_timers(state, cycles, div_cycles, timer_cycles);
@@ -2635,29 +2633,45 @@ int run_bootstrap(struct gb_state *state) {
 	uint16_t div_cycles = 0;
 	uint32_t timer_cycles = 0;
 	int total_cycles = 0;
-	clock_t clock_start = clock();
+	uint32_t frame_time = 0;
+	//clock_t start = clock();
 	while (state->mem[0xFF50] != 0x01)
 	{
-		if (tick(state, &clock_start, &total_cycles, &div_cycles, &timer_cycles)) {
+		if (state->mem[SCY] < 0x05 || state->mem[SCY] > 0x80) {
+			//print_registers(state);
+			//printf("SCY %02X at %04X with op %02X\n", state->mem[SCY], state->pc, state->mem[state->pc]);
+		}
+		if (state->mem[SCY] > 0x80) {
+			//return 1;
+		}
+		if (tick(state, &total_cycles, &div_cycles, &timer_cycles)) {
 			return 1;
 		}
 	}
+	/*
+	   clock_t diff = clock() - start;
+	   uint32_t ms = diff * 1000 / CLOCKS_PER_SEC;
+	   printf("%d frames in %d ms\n", frame_count, ms);
+	   */
 	return 0;
 }
 
 int power_up(struct gb_state *state, int bootstrap_flag) {
 	state->pc = 0x0000;
+	//custom
+	state->ime = 0;
+	state->halt = 0;
+
 	if (bootstrap_flag) {
 		set_mem(LY, 0x90); // needed for bootstrap
 		if (run_bootstrap(state)) {
 			puts("Bootstrap exited early\n");
 			return 1;
 		}
-		print_memory(state);
+		//print_memory(state);
 		printf("SCY: %02X\n", state->mem[SCY]);
 		printf("SCX: %02X\n", state->mem[SCX]);
 	}
-	return 1;
 
 	state->a = 0x01;
 	state->f = 0xB0;
@@ -2700,22 +2714,18 @@ int power_up(struct gb_state *state, int bootstrap_flag) {
 	set_mem(WX, 0x00);
 	set_mem(IE, 0x00);
 
-	//custom
-	state->ime = 0;
-	state->halt = 0;
 	return 0;
 }
-
 
 
 void instruction_cycle(struct gb_state *state) {
 	uint16_t div_cycles = 0;
 	uint32_t timer_cycles = 0;
 	int total_cycles = 0;
-	clock_t clock_start = clock();
+	uint32_t frame_time = 0;
 	while (1)
 	{
-		if (tick(state, &clock_start, &total_cycles, &div_cycles, &timer_cycles)) {
+		if (tick(state, &total_cycles, &div_cycles, &timer_cycles)) {
 			return;
 		}
 	}

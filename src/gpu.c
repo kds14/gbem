@@ -17,6 +17,7 @@ static const int SPRITE_Y_OFFSET = 16;
 int current_time = 0;
 uint8_t current_line = 0x0;
 int vblank = 0;
+uint32_t frame_time = 0;
 
 void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1) {
 	for (int i = 0; i < 8; i++) {
@@ -57,18 +58,17 @@ void draw_sprites(uint8_t y) {
 
 void draw_background(uint8_t y) {
 	struct lcdc *lcdc = get_lcdc();
-	if (!lcdc->bg_win_display)
+	if (!lcdc->bg_win_display) {
 		return;
+	}
 
 	// tile map address
 	uint16_t tile_map_addr = BG_MAP_DATA0;
-	/*if (lcdc->bg_tile_map)
-		tile_map_addr = BG_MAP_DATA1;*/
+	if (lcdc->bg_tile_map)
+		tile_map_addr = BG_MAP_DATA1;
 
 	uint8_t scy = gb_mem[SCY];
 	uint8_t scx = gb_mem[SCX];
-
-	uint8_t row = y + scy;
 
 	uint8_t x_start = scx / 8;
 	uint8_t x_offset = scx % 8;
@@ -76,18 +76,15 @@ void draw_background(uint8_t y) {
 	uint8_t line = (scy + y) % 8;
 	for (int i = 0; i < 18; i++) {
 		uint8_t tile = i + x_start;
-		while (tile >= 32) {
+		/*while (tile >= 32) {
 			tile -= 32;
-		}
+		}*/
 		uint8_t tile_start_x = i * 8;
 		uint16_t tile_addr = tile_map_addr + tile + y_start * 32;
-		while (tile_addr > BG_MAP_DATA0_END) {
+		/*while (tile_addr > BG_MAP_DATA0_END) {
 			tile_addr = BG_MAP_DATA0 + tile_addr - BG_MAP_DATA0_END;
-		}
+		}*/
 		uint8_t index = gb_mem[tile_addr];
-		if (index) {
-			printf("%02X\n", index);
-		}
 		uint8_t *data = get_tile_data(index, 16, lcdc->bg_tile_sel);
 		uint8_t row0 = data[line * 2];
 		uint8_t row1 = data[line * 2 + 1];
@@ -102,12 +99,10 @@ void draw_scan_line(uint8_t y) {
 	draw_sprites(y);
 }
 
-int gpu_tick(clock_t *start) {
+int gpu_tick() {
 	struct lcdc *lcdc = get_lcdc();
-	if (lcdc->win_display)
+	if (lcdc->win_display) {
 		return 0;
-	if (!current_time) {
-		clear_renderer();
 	}
 	if (!(current_time % SCANLINE_TIME)) {
 		// HDRAW
@@ -131,6 +126,7 @@ int gpu_tick(clock_t *start) {
 	if (!(current_time % REFRESH_TIME) && current_time) {
 		// END
 		display_render();
+		wait_clear_renderer(&frame_time);
 		get_if()->vblank = 0;
 		current_time = -1;
 		current_line = 0;
@@ -139,5 +135,5 @@ int gpu_tick(clock_t *start) {
 		vblank = 0;
 	}
 	current_time += PIXEL_TIME;
-	return handle_display_events(start);
+	return handle_display_events();
 }
