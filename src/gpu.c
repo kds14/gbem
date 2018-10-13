@@ -107,7 +107,7 @@ int gpu_tick() {
 	if (!(current_time % SCANLINE_TIME)) {
 		// HDRAW
 		if (!vblank)
-			get_stat()->mode_flag = 10;
+			get_stat()->mode_flag = 0x02;
 		// TODO: mode_flag = 11;
 		draw_scan_line(current_line++);
 		set_mem(LY, current_line);
@@ -119,7 +119,7 @@ int gpu_tick() {
 	if (!(current_time % VDRAW_TIME) && current_time) {
 		// VBLANK
 		get_if()->vblank = 1;
-		get_stat()->mode_flag = 01;
+		get_stat()->mode_flag = 0x01;
 		vblank = 1;
 	}
 
@@ -131,7 +131,7 @@ int gpu_tick() {
 		current_time = -1;
 		current_line = 0;
 		set_mem(LY, current_line);
-		get_stat()->mode_flag = 10;
+		get_stat()->mode_flag = 0x02;
 		vblank = 0;
 	}
 	current_time += PIXEL_TIME;

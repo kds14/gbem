@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "mem.h"
+#include "debug.h"
 
 static const int CLOCK_SPEED = 4195304;
 static const int MAX_CYCLES_PER_FRAME = 70224;
@@ -169,7 +170,7 @@ void push(struct gb_state *state, uint16_t val) {
 }
 
 void rst(struct gb_state *state, uint16_t val) {
-	push(state, state->pc - 1);
+	push(state, state->pc);
 	jump(state, 1, val);
 }
 
@@ -252,11 +253,28 @@ void print_registers(struct gb_state *state) {
 	printf("FLAGS: Z:%d N:%d H:%d C:%d None:%d\n", state->fz, state->fn, state->fh, state->fc, state->fl );
 }
 
+void handle_debug(int start_pc, int pc, uint8_t* op, int cycles) {
+	if (debug_enabled) {
+		int extra_size = pc - start_pc;
+		uint16_t extra = 0;
+		uint8_t extra_flag = 0;
+		/*fprintf(stdout, "WEE: %d\n", extra_size);
+		if (extra_size == 3) {
+			extra = op[2] << 8 | op[1];
+			extra_flag = 2;
+		} else if (extra_size == 2) {
+			extra = op[1];
+			extra_flag = 1;
+		}*/
+		add_debug(start_pc, *op, cycles, extra, extra_flag);
+	}
+}
+
 int execute_cb(struct gb_state *state) {
 	int pc = state->pc;
 	uint8_t *op = &state->mem[pc];
 	int cycles = 8;
-	state->pc++;
+	int pc_start = state->pc++;
 	switch (*op) {
 		case 0x00:
 			/* RLC B */
@@ -1323,10 +1341,12 @@ int execute_cb(struct gb_state *state) {
 			set(state, 7, &state->a);
 			break;
 		default:
-			printf("%04X : CB %02X instruction not implemented yet\n", state->pc - 1, state->mem[pc]);
+			fprintf(stderr, "%04X : CB %02X instruction does not exit\n", state->pc - 1, state->mem[pc]);
+			fprintf_debug_info(stdout);
 			cycles = 0;
 			break;
 	}
+	handle_debug(pc_start, state->pc, op, cycles);
 	return cycles;
 }
 
@@ -1338,7 +1358,7 @@ int execute(struct gb_state *state) {
 	int pc = state->pc;
 	uint8_t *op = &state->mem[pc];
 	int cycles = 4;
-	state->pc++;
+	int pc_start = state->pc++;
 	uint16_t nn = (op[2] << 8) | op[1];
 	switch (*op) {
 		case 0x00:
@@ -1421,8 +1441,9 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x10:
 			/* STOP 0 */
-			puts("STOP 0 (0x1000) not implemented\n");
+			fprintf(stderr, "STOP 0 not implemented\n");
 			state->pc++;
+			fprintf_debug_info(stdout);
 			break;
 		case 0x11:
 			/* LD DE,nn */
@@ -1460,6 +1481,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x18:
 			/* JR n */
+			printf("%04X JR %02X\n", state->pc-1, op[1]);
 			state->pc += 1 + (int8_t)op[1];
 			cycles = 8;
 			break;
@@ -1499,6 +1521,7 @@ int execute(struct gb_state *state) {
 			/* JR NZ,n */
 			state->pc++;
 			if (!state->fz) {
+				printf("%04X JR %02X\n", state->pc-2, op[1]);
 				state->pc += (int8_t)op[1];
 			}
 			cycles = 8;
@@ -1557,6 +1580,8 @@ int execute(struct gb_state *state) {
 			/* JR Z,n */
 			state->pc++;
 			if (state->fz) {
+				printf("%04X JR Z %02X\n", state->pc-2, op[1]);
+				print_registers(state);
 				state->pc += op[1];
 			}
 			cycles = 8;
@@ -1599,6 +1624,7 @@ int execute(struct gb_state *state) {
 			/* JR NC,n */
 			state->pc++;
 			if (!state->fc) {
+				printf("%04X JR NC %02X\n", state->pc-2, op[1]);
 				state->pc += (int8_t)op[1];
 			}
 			cycles = 8;
@@ -1645,6 +1671,7 @@ int execute(struct gb_state *state) {
 			/* JR C,n */
 			state->pc++;
 			if (state->fc) {
+				printf("%04X JR C %02X\n", state->pc-2, op[1]);
 				state->pc += (int8_t)op[1];
 			}
 			cycles = 8;
@@ -2237,12 +2264,14 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xC2:
 			/* JP NZ,nn */
+			printf("%04X JP NZ %04X\n", state->pc-1, nn);
 			state->pc += 2;
 			jump(state, !state->fz, nn);
 			cycles = 12;
 			break;
 		case 0xC3:
 			/* JP nn */
+			printf("%04X JP %04X\n", state->pc-1, nn);
 			state->pc += 2;
 			jump(state, 1, nn);
 			cycles = 12;
@@ -2281,6 +2310,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xCA:
 			/* JP Z,nn */
+			printf("%04X JP Z %04X\n", state->pc-1, nn);
 			state->pc += 2;
 			jump(state, state->fz, nn);
 			cycles = 12;
@@ -2323,6 +2353,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xD2:
 			/* JP NC,nn */
+			printf("%04X JP NC %04X\n", state->pc-1, nn);
 			state->pc += 2;
 			jump(state, !state->fc, nn);
 			cycles = 12;
@@ -2362,6 +2393,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xDA:
 			/* JP C,nn */
+			printf("%04X JP C %04X\n", state->pc-1, nn);
 			state->pc += 2;
 			jump(state, state->fc, nn);
 			cycles = 12;
@@ -2426,6 +2458,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xE9:
 			/* JP (HL) */
+			printf("%04X JP (%04X)\n", state->pc-1, state->hl);
 			state->pc = state->hl;
 			break;
 		case 0xEA:
@@ -2453,6 +2486,7 @@ int execute(struct gb_state *state) {
 			state->a = state->mem[op[1] + IO_PORTS];
 			cycles = 12;
 			state->pc++;
+			//printf("LOADING %02X (%04X) into A\nNEXT: %04X", state->a, op[1] + IO_PORTS, state->pc++);
 			break;
 		case 0xF1:
 			/* POP AF */
@@ -2520,10 +2554,12 @@ int execute(struct gb_state *state) {
 			rst(state, 0x38);
 			break;
 		default:
-			printf("%04X : %02X not implemented yet\n", state->pc - 2, *op);
+			fprintf(stderr, "%04X : %02X does not exist\n", state->pc - 2, *op);
+			fprintf_debug_info(stdout);
 			cycles = 0;
 			break;
 	};
+	handle_debug(pc_start, state->pc, op, cycles);
 	return cycles;
 }
 
@@ -2611,6 +2647,13 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 
 int tick(struct gb_state *state, int *total_cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
 	int cycles = 0;
+	if (state->pc == 0x0359) {
+		/*fprintf_debug_info(stdout);
+		printf("%04X %02X\n", state->pc, state->mem[state->pc]);
+		exit(1);*/
+	} else {
+		//printf("%04X %02X\n", state->pc, state->mem[state->pc]);
+	}
 	if (!state->halt) {
 		cycles = execute(state);
 		if (cycles == 0) return 1;
@@ -2639,7 +2682,6 @@ int run_bootstrap(struct gb_state *state) {
 	{
 		if (state->mem[SCY] < 0x05 || state->mem[SCY] > 0x80) {
 			//print_registers(state);
-			//printf("SCY %02X at %04X with op %02X\n", state->mem[SCY], state->pc, state->mem[state->pc]);
 		}
 		if (state->mem[SCY] > 0x80) {
 			//return 1;
@@ -2665,12 +2707,10 @@ int power_up(struct gb_state *state, int bootstrap_flag) {
 	if (bootstrap_flag) {
 		set_mem(LY, 0x90); // needed for bootstrap
 		if (run_bootstrap(state)) {
-			puts("Bootstrap exited early\n");
+			fprintf(stderr, "Bootstrap exited early\n");
 			return 1;
 		}
 		//print_memory(state);
-		printf("SCY: %02X\n", state->mem[SCY]);
-		printf("SCX: %02X\n", state->mem[SCX]);
 	}
 
 	state->a = 0x01;
@@ -2717,12 +2757,12 @@ int power_up(struct gb_state *state, int bootstrap_flag) {
 	return 0;
 }
 
-
 void instruction_cycle(struct gb_state *state) {
 	uint16_t div_cycles = 0;
 	uint32_t timer_cycles = 0;
 	int total_cycles = 0;
 	uint32_t frame_time = 0;
+	int counter = 0;
 	while (1)
 	{
 		if (tick(state, &total_cycles, &div_cycles, &timer_cycles)) {
@@ -2730,7 +2770,6 @@ void instruction_cycle(struct gb_state *state) {
 		}
 	}
 }
-
 
 void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_flag) {
 	struct gb_state *state = calloc(1, sizeof(struct gb_state));
@@ -2752,6 +2791,8 @@ void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_fla
 		memcpy(state->mem, cart_first256, 0x100);
 		free(bs_mem);
 	}
+
+	state->pc = 0x100;
 
 	free(cart_first256);
 	free(cart_mem);
@@ -2781,23 +2822,46 @@ int main(int argc, char **argv) {
 	char *cart_path;
 	uint8_t bootstrap_flag = 0;
 	if (start_display()) {
-		exit(1);
+		return 1;
 	}
+	int debug_flag = 0;
+	int debug_size = 0;
 	if (argc > 1) {
 		for (int i = 1; i < argc; i++) {
 			if (!strcmp(argv[i],"-c") && i < argc - 1) {
+				if (i+1 >= argc) {
+					fprintf(stderr, "No argument after -c\n");
+					return 1;
+				}
 				cart_path = argv[++i];
 			} else if (!strcmp(argv[i],"-b") && i < argc - 1) {
+				if (i+1 >= argc) {
+					fprintf(stderr, "No argument after -b\n");
+					return 1;
+				}
 				bootstrap_path = argv[++i];
 				bootstrap_flag = 1;
+			} else if (!strcmp(argv[i],"-d")) {
+				if (i+1 >= argc) {
+					fprintf(stderr, "No argument after -d\n");
+					return 1;
+				}
+				debug_size = atoi(argv[++i]);
+				debug_flag = 1;
 			} else {
-				printf("Illegal argument: %s", argv[i]);
-				exit(1);
+				fprintf(stderr, "Illegal argument: %s\n", argv[i]);
+				return 1;
 			}
 		}
 	} else {
-		puts("Not enough arguments");
-		exit(1);
+		fprintf(stderr, "Not enough arguments\n");
+		return 1;
+	}
+
+	if (debug_flag) {
+		init_debug(debug_size);
+	} else {
+		debug_enabled = 0;
 	}
 
 	long bs_size = 0;
@@ -2806,8 +2870,8 @@ int main(int argc, char **argv) {
 	if (bootstrap_flag) {
 		bs_mem = read_file(bootstrap_path, &bs_size);
 		if (bs_size != 0x100) {
-			printf("Bootstrap excepted to be size of 256 bytes (Actual: %ld)", bs_size);
-			exit(1);
+			fprintf(stderr, "Bootstrap excepted to be size of 256 bytes (Actual: %ld)\n", bs_size);
+			return 1;
 		}
 	}
 	uint8_t *cart_mem = read_file(cart_path, &cart_size);

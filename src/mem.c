@@ -1,11 +1,24 @@
 #include "mem.h"
 
+static const size_t DMA_SIZE = 0xA0;
+
+void dma(uint8_t addr) {
+	uint8_t *dest = &gb_mem[OAM];
+	uint16_t src_addr = addr << 8;
+	uint8_t *src = &gb_mem[src_addr];
+	memcpy(dest, src, DMA_SIZE);
+}
+
 void set_mem(uint16_t dest, uint8_t data) {
 	gb_mem[dest] = data;
 	if (dest >= INTERNAL_RAM0 && dest <= 0xDDFF) {
 		gb_mem[data + ECHO_OFFSET] = data;
 	} else if (dest >= ECHO_RAM && dest <= 0xFDFF) {
 		gb_mem[data - ECHO_OFFSET] = data;
+	}
+
+	if (dest == DMA && data <= 0xF1) {
+		dma(data);
 	}
 	// TODO: look at specifics of some special registers
 }
