@@ -3,6 +3,7 @@
 #include <malloc.h>
 #include <memory.h>
 #include <time.h>
+#include <signal.h>
 
 #include "mem.h"
 #include "debug.h"
@@ -251,6 +252,8 @@ void set(struct gb_state *state, uint8_t bit, uint8_t *reg) {
 void print_registers(struct gb_state *state) {
 	printf("A: %02X, B: %02X, C: %02X, D: %02X, E: %02X, F: %02X, H: %02X, L: %02X, SP: %04X, PC: %04X\n", state->a, state->b, state->c, state->d, state->e, state->f, state->h, state->l, state->sp, state->pc);
 	printf("FLAGS: Z:%d N:%d H:%d C:%d None:%d\n", state->fz, state->fn, state->fh, state->fc, state->fl );
+	/*printf("SPECIAL REGISTERS:\n");
+	printf("SPECIAL", state->a, state->b, state->c, state->d, state->e, state->f, state->h, state->l, state->sp, state->pc);*/
 }
 
 void handle_debug(int start_pc, int pc, uint8_t* op, int cycles) {
@@ -1443,7 +1446,7 @@ int execute(struct gb_state *state) {
 			/* STOP 0 */
 			fprintf(stderr, "STOP 0 not implemented\n");
 			state->pc++;
-			fprintf_debug_info(stdout);
+			//fprintf_debug_info(stdout);
 			break;
 		case 0x11:
 			/* LD DE,nn */
@@ -1481,7 +1484,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x18:
 			/* JR n */
-			printf("%04X JR %02X\n", state->pc-1, op[1]);
+			//printf("%04X JR %02X\n", state->pc-1, op[1]);
 			state->pc += 1 + (int8_t)op[1];
 			cycles = 8;
 			break;
@@ -1521,7 +1524,7 @@ int execute(struct gb_state *state) {
 			/* JR NZ,n */
 			state->pc++;
 			if (!state->fz) {
-				printf("%04X JR %02X\n", state->pc-2, op[1]);
+				//printf("%04X JR %02X\n", state->pc-2, op[1]);
 				state->pc += (int8_t)op[1];
 			}
 			cycles = 8;
@@ -1580,8 +1583,8 @@ int execute(struct gb_state *state) {
 			/* JR Z,n */
 			state->pc++;
 			if (state->fz) {
-				printf("%04X JR Z %02X\n", state->pc-2, op[1]);
-				print_registers(state);
+				//printf("%04X JR Z %02X\n", state->pc-2, op[1]);
+				//print_registers(state);
 				state->pc += op[1];
 			}
 			cycles = 8;
@@ -1624,7 +1627,7 @@ int execute(struct gb_state *state) {
 			/* JR NC,n */
 			state->pc++;
 			if (!state->fc) {
-				printf("%04X JR NC %02X\n", state->pc-2, op[1]);
+				//printf("%04X JR NC %02X\n", state->pc-2, op[1]);
 				state->pc += (int8_t)op[1];
 			}
 			cycles = 8;
@@ -1671,7 +1674,7 @@ int execute(struct gb_state *state) {
 			/* JR C,n */
 			state->pc++;
 			if (state->fc) {
-				printf("%04X JR C %02X\n", state->pc-2, op[1]);
+				//printf("%04X JR C %02X\n", state->pc-2, op[1]);
 				state->pc += (int8_t)op[1];
 			}
 			cycles = 8;
@@ -1943,6 +1946,7 @@ int execute(struct gb_state *state) {
 			/* HALT */
 			state->halt = 1;
 			// TODO: figure out if supposed to enable IME
+			state->ime = 1;
 			state->ime = 1;
 			break;
 		case 0x77:
@@ -2264,14 +2268,14 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xC2:
 			/* JP NZ,nn */
-			printf("%04X JP NZ %04X\n", state->pc-1, nn);
+			//printf("%04X JP NZ %04X\n", state->pc-1, nn);
 			state->pc += 2;
 			jump(state, !state->fz, nn);
 			cycles = 12;
 			break;
 		case 0xC3:
 			/* JP nn */
-			printf("%04X JP %04X\n", state->pc-1, nn);
+			//printf("%04X JP %04X\n", state->pc-1, nn);
 			state->pc += 2;
 			jump(state, 1, nn);
 			cycles = 12;
@@ -2310,7 +2314,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xCA:
 			/* JP Z,nn */
-			printf("%04X JP Z %04X\n", state->pc-1, nn);
+			//printf("%04X JP Z %04X\n", state->pc-1, nn);
 			state->pc += 2;
 			jump(state, state->fz, nn);
 			cycles = 12;
@@ -2353,7 +2357,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xD2:
 			/* JP NC,nn */
-			printf("%04X JP NC %04X\n", state->pc-1, nn);
+			//printf("%04X JP NC %04X\n", state->pc-1, nn);
 			state->pc += 2;
 			jump(state, !state->fc, nn);
 			cycles = 12;
@@ -2393,7 +2397,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xDA:
 			/* JP C,nn */
-			printf("%04X JP C %04X\n", state->pc-1, nn);
+			//printf("%04X JP C %04X\n", state->pc-1, nn);
 			state->pc += 2;
 			jump(state, state->fc, nn);
 			cycles = 12;
@@ -2458,7 +2462,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xE9:
 			/* JP (HL) */
-			printf("%04X JP (%04X)\n", state->pc-1, state->hl);
+			//printf("%04X JP (%04X)\n", state->pc-1, state->hl);
 			state->pc = state->hl;
 			break;
 		case 0xEA:
@@ -2582,22 +2586,27 @@ void handle_interrupts(struct gb_state *state) {
 	uint8_t ie = state->mem[IE];
 	uint8_t iff = state->mem[IF];
 	uint16_t addr = 0x0000;
-	//printf("IE: %02X, IF: %02X, IME: %02X", ie, iff, state->ime);
+	//printf("IE: %02X, IF: %02X, IME: %02X\n", ie, iff, state->ime);
 	if (iff & ie & 0x01) {
 		// V-Blank
 		addr = VBLANK_ADDR;
+		//printf("VBLANK INT\n");
 	} else if (iff & ie & 0x02) {
 		// LCDC
 		addr = LCDC_ADDR;
+		//printf("LCDC_ADDR INT\n");
 	} else if (iff & ie & 0x04) {
 		// Timer overflow
 		addr = TIMER_OVERFLOW_ADDR;
+		//printf("TIMER_OVERFLOW INT\n");
 	} else if (iff & ie & 0x08) {
 		// Serial I/O transfer complete
 		addr = SERIAL_IO_TRANS_ADDR;
+		//printf("SERIAL_IO_TRANS INT\n");
 	} else if (iff & ie & 0x10) {
 		// Transition from High to Low of Pin number P10-P13
 		addr = P10_P13_TRANSITION_ADDR;
+		//printf("P10_P13 INT\n");
 	}
 
 	if (addr != 0x000) {
@@ -2620,7 +2629,7 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 	if ((state->mem[TAC] & 0x04) != 0x04)
 		return;
 	uint32_t tima_freq = 2147483647;
-	switch (state->mem[0xFF07] & 0x03) {
+	switch (state->mem[TAC] & 0x03) {
 		case 0x00:
 			tima_freq = 4096;
 			break;
@@ -2636,36 +2645,45 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 	}
 	if (*timer_cycles >= tima_freq) {
 		*timer_cycles = 0;
-		state->mem[TIMA] += 1;
 		if (state->mem[TIMA] == 0xFF) {
 			state->mem[IF] |= 0x04;
+			state->mem[TIMA] = state->mem[TMA];
+		} else {
+			state->mem[TIMA] += 1;
 		}
 	}
 }
 
 //uint32_t frame_count = 0;
-
+//int ye = 0;
 int tick(struct gb_state *state, int *total_cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
-	int cycles = 0;
+	int cycles = 4;
+	/*if (state->mem[IE]) {
+		ye = 1;
+	}
+	if (ye && state->mem[IE]) {
+		printf("IE DISABLED\n");
+		fprintf_debug_info(stdout);
+	}
 	if (state->pc == 0x0359) {
-		/*fprintf_debug_info(stdout);
+		fprintf_debug_info(stdout);
 		printf("%04X %02X\n", state->pc, state->mem[state->pc]);
-		exit(1);*/
+		exit(1);
 	} else {
 		//printf("%04X %02X\n", state->pc, state->mem[state->pc]);
-	}
+		}*/
 	if (!state->halt) {
 		cycles = execute(state);
 		if (cycles == 0) return 1;
-	}
-	for (int i = 0; i < cycles; i++) {
-		if (++*total_cycles > MAX_CYCLES_PER_FRAME)
-		{
-			*total_cycles = 0;
-			//frame_count++;
+		for (int i = 0; i < cycles; i++) {
+			if (++*total_cycles > MAX_CYCLES_PER_FRAME)
+			{
+				*total_cycles = 0;
+				//frame_count++;
+			}
+			if (gpu_tick())
+				return 1;
 		}
-		if (gpu_tick())
-			return 1;
 	}
 	handle_timers(state, cycles, div_cycles, timer_cycles);
 	handle_interrupts(state);
