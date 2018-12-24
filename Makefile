@@ -1,14 +1,15 @@
-TARGET = ./build/cpu
-DIR = ./build/
-SOURCES = src/*.c
-CC = cl
-FLAGS = /Wall
-HEADERS = src/*.h
-LIBPATH = ./sdl2/lib
-INC = ./sdl2/include
+TARGET=./build/cpu
+SOURCES=./src/*.c
+CC=gcc
+FLAGS=-Wall -Werror
+LIBPATH=./sdl2/lib
+INC=./sdl2/include
 
 all: $(TARGET)
 
 $(TARGET):$(SOURCES)
-	-@ if NOT EXIST "build" mkdir "build"
-	$(CC) $(flags) /Fe$@ $** /Fo$(DIR) /I $(INC) /link /LIBPATH:$(LIBPATH) SDL2.lib SDL2main.lib
+	mkdir -p build
+	$(CC) $(FLAGS) -o $@ $^ `sdl2-config --cflags --libs`
+
+clean:
+	rm -rf ./build

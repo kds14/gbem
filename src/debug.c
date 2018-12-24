@@ -65,7 +65,7 @@ void fprintf_debug_info(FILE* stream) {
 		} if (ptr->extra_flag == 1) {
 			fprintf(stream, "%04X\t%02X\t%02X\t(%02X cycles)\n", ptr->pc, ptr->instruction, (uint8_t)ptr->extra, ptr->cycles);
 		} else {
-			fprintf(stream, "%04X\t%02X\t%(%02X cycles)\n", ptr->pc, ptr->instruction, ptr->cycles);
+			fprintf(stream, "%04X\t%02X\t(%02X cycles)\n", ptr->pc, ptr->instruction, ptr->cycles);
 		}
 	}
 }

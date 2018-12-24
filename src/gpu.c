@@ -1,23 +1,23 @@
 #include "mem.h"
 #include "gpu.h"
+#include "display.h"
 
 static const int PIXEL_TIME = 1;
-static const int HDRAW_TIME = 240;
+//static const int HDRAW_TIME = 240;
 static const int HBLANK_TIME = 68;
 static const int SCANLINE_TIME = 308;
 static const int VDRAW_TIME = 49280;
-static const int VBLANK_TIME = 20944;
+//static const int VBLANK_TIME = 20944;
 static const int REFRESH_TIME = 70224;
 
 static const int OAM_COUNT = 40;
-static const int BG_TILE_COUNT = 32;
+//static const int BG_TILE_COUNT = 32;
 static const int SPRITE_X_OFFSET = 8;
 static const int SPRITE_Y_OFFSET = 16;
 
 int current_time = 0;
 uint8_t current_line = 0x0;
 int vblank = 0;
-uint32_t frame_time = 0;
 
 void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1) {
 	for (int i = 0; i < 8; i++) {
@@ -71,7 +71,6 @@ void draw_background(uint8_t y) {
 	uint8_t scx = gb_mem[SCX];
 
 	uint8_t x_start = scx / 8;
-	uint8_t x_offset = scx % 8;
 	uint8_t y_start = (y + scy) / 8;
 	uint8_t line = (scy + y) % 8;
 	for (int i = 0; i < 18; i++) {
@@ -122,18 +121,19 @@ int gpu_tick() {
 		get_stat()->mode_flag = 0x01;
 		vblank = 1;
 	}
-
+	int status = 0;
 	if (!(current_time % REFRESH_TIME) && current_time) {
 		// END
 		display_render();
-		wait_clear_renderer(&frame_time);
+		wait_clear_renderer();
 		get_if()->vblank = 0;
 		current_time = -1;
 		current_line = 0;
 		set_mem(LY, current_line);
 		get_stat()->mode_flag = 0x02;
 		vblank = 0;
+		status = handle_display_events();
 	}
 	current_time += PIXEL_TIME;
-	return handle_display_events();
+	return status;
 }

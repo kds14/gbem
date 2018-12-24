@@ -42,14 +42,16 @@ void clear_renderer() {
 	SDL_RenderClear(renderer);
 }
 
-void wait_clear_renderer(uint32_t *frame_time) {
-	int wait_time = 16.75L - SDL_GetTicks() + *frame_time;
+Uint32 frame_time = 0;
+
+void wait_clear_renderer() {
+	int wait_time = 16.75L - SDL_GetTicks() + frame_time;
 	if (wait_time > 0) {
 		SDL_Delay(wait_time);
 	}
 	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 	SDL_RenderClear(renderer);
-	*frame_time = SDL_GetTicks();
+	frame_time = SDL_GetTicks();
 }
 
 void end_display() {

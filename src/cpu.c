@@ -7,8 +7,10 @@
 
 #include "mem.h"
 #include "debug.h"
+#include "display.h"
+#include "gpu.h"
 
-static const int CLOCK_SPEED = 4195304;
+//static const int CLOCK_SPEED = 4195304;
 static const int MAX_CYCLES_PER_FRAME = 70224;
 
 /*
@@ -69,17 +71,16 @@ struct gb_state
 
 void set_add16_flags(struct gb_state *state, uint16_t a, uint16_t b) {
 	state->fn = 0;
-	state->fh = ((a & 0xFFF) + (b & 0xFFF)) & 0x100;
-	state->fc = ((uint32_t)a + (uint32_t)b) & 0x1000;
+	state->fh = (((a & 0xFF) + (b & 0xFF)) & 0x100) == 0x100;
+	state->fc = ((((uint32_t)a & 0xFFFF) + ((uint32_t)b & 0xFFFF)) & 0x10000) == 0x10000;
 }
 
 void set_add8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry) {
 	state->fn = 0;
 	state->fz = !(uint8_t)(a + b);
-	//printf("%02X + %02X = %02X (%02X)\n", a, b, (uint8_t)(a + b), state->fz);
-	state->fh = ((a & 0x0F) + (b & 0x0F)) & 0x10;
+	state->fh = (((a & 0xF) + (b & 0xF)) & 0x10) == 0x10;
 	if (use_carry) {
-		state->fc = (((uint16_t)a & 0xFF) + ((uint16_t)b & 0xFF)) & 0x100;
+		state->fc = ((((uint16_t)a & 0xFF) + ((uint16_t)b & 0xFF)) & 0x100) == 0x100;
 	}
 }
 
@@ -258,7 +259,6 @@ void print_registers(struct gb_state *state) {
 
 void handle_debug(int start_pc, int pc, uint8_t* op, int cycles) {
 	if (debug_enabled) {
-		int extra_size = pc - start_pc;
 		uint16_t extra = 0;
 		uint8_t extra_flag = 0;
 		/*fprintf(stdout, "WEE: %d\n", extra_size);
@@ -2654,24 +2654,8 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 	}
 }
 
-//uint32_t frame_count = 0;
-//int ye = 0;
 int tick(struct gb_state *state, int *total_cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
 	int cycles = 4;
-	/*if (state->mem[IE]) {
-		ye = 1;
-	}
-	if (ye && state->mem[IE]) {
-		printf("IE DISABLED\n");
-		fprintf_debug_info(stdout);
-	}
-	if (state->pc == 0x0359) {
-		fprintf_debug_info(stdout);
-		printf("%04X %02X\n", state->pc, state->mem[state->pc]);
-		exit(1);
-	} else {
-		//printf("%04X %02X\n", state->pc, state->mem[state->pc]);
-		}*/
 	if (!state->halt) {
 		cycles = execute(state);
 		if (cycles == 0) return 1;
@@ -2679,7 +2663,6 @@ int tick(struct gb_state *state, int *total_cycles, uint16_t *div_cycles, uint32
 			if (++*total_cycles > MAX_CYCLES_PER_FRAME)
 			{
 				*total_cycles = 0;
-				//frame_count++;
 			}
 			if (gpu_tick())
 				return 1;
@@ -2694,8 +2677,6 @@ int run_bootstrap(struct gb_state *state) {
 	uint16_t div_cycles = 0;
 	uint32_t timer_cycles = 0;
 	int total_cycles = 0;
-	uint32_t frame_time = 0;
-	//clock_t start = clock();
 	while (state->mem[0xFF50] != 0x01)
 	{
 		if (state->mem[SCY] < 0x05 || state->mem[SCY] > 0x80) {
@@ -2712,7 +2693,7 @@ int run_bootstrap(struct gb_state *state) {
 	   clock_t diff = clock() - start;
 	   uint32_t ms = diff * 1000 / CLOCKS_PER_SEC;
 	   printf("%d frames in %d ms\n", frame_count, ms);
-	   */
+	 */
 	return 0;
 }
 
@@ -2728,6 +2709,7 @@ int power_up(struct gb_state *state, int bootstrap_flag) {
 			fprintf(stderr, "Bootstrap exited early\n");
 			return 1;
 		}
+		exit(0);
 		//print_memory(state);
 	}
 
@@ -2779,8 +2761,6 @@ void instruction_cycle(struct gb_state *state) {
 	uint16_t div_cycles = 0;
 	uint32_t timer_cycles = 0;
 	int total_cycles = 0;
-	uint32_t frame_time = 0;
-	int counter = 0;
 	while (1)
 	{
 		if (tick(state, &total_cycles, &div_cycles, &timer_cycles)) {

@@ -2,6 +2,8 @@
 #define MEM_H
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* Special Registers */
 #define SB 0xFF01
@@ -109,12 +111,10 @@ struct stat
 {
 	uint8_t mode_flag: 2;
 	uint8_t coincidence : 1;
-	struct int_selection {
-		uint8_t mode00 : 1;
-		uint8_t mode01 : 1;
-		uint8_t mode10 : 1;
-		uint8_t lcy_eq_ly_coinc : 1;
-	};
+	uint8_t mode00 : 1;
+	uint8_t mode01 : 1;
+	uint8_t mode10 : 1;
+	uint8_t lcy_eq_ly_coinc : 1;
 	uint8_t none : 1;
 };
 
