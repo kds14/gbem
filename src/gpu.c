@@ -121,8 +121,11 @@ int gpu_tick() {
 		// END
 		if (get_lcdc()->lcd_control_op) {
 			display_render();
+			status = wait_clear_renderer();
+		} else {
+			status = wait_clear_renderer();
+			display_render();
 		}
-		status = wait_clear_renderer();
 		get_if()->vblank = 0;
 		current_time = -1;
 		current_line = 0;
