@@ -2709,7 +2709,6 @@ int power_up(struct gb_state *state, int bootstrap_flag) {
 			fprintf(stderr, "Bootstrap exited early\n");
 			return 1;
 		}
-		exit(0);
 		//print_memory(state);
 	}
 

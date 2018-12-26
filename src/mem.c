@@ -10,6 +10,10 @@ void dma(uint8_t addr) {
 }
 
 void set_mem(uint16_t dest, uint8_t data) {
+	if (dest >= 0x8000 && dest <= 0x9FFF && get_stat()->mode_flag == 0x03)
+		return;
+	if (dest >= 0xFE00 && dest <= 0xFE9F && get_stat()->mode_flag > 0x01)
+		return;
 	gb_mem[dest] = data;
 	if (dest >= INTERNAL_RAM0 && dest <= 0xDDFF) {
 		gb_mem[data + ECHO_OFFSET] = data;

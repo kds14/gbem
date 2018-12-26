@@ -33,25 +33,28 @@ void draw_pixel(int x, int y) {
 	SDL_RenderDrawPoint(renderer, x, y);
 }
 
+
 void display_render() {
 	SDL_RenderPresent(renderer);
 }
 
-void clear_renderer() {
-	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-	SDL_RenderClear(renderer);
-}
-
 Uint32 frame_time = 0;
 
-void wait_clear_renderer() {
+int wait_clear_renderer() {
 	int wait_time = 16.75L - SDL_GetTicks() + frame_time;
 	if (wait_time > 0) {
 		SDL_Delay(wait_time);
 	}
+	SDL_Event event;
+	if (SDL_PollEvent(&event)) {
+		if (event.type == SDL_QUIT) {
+			return 1;
+		}
+	}
 	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 	SDL_RenderClear(renderer);
 	frame_time = SDL_GetTicks();
+	return 0;
 }
 
 void end_display() {
@@ -59,15 +62,3 @@ void end_display() {
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 }
-
-int handle_display_events() {
-	SDL_Event event;
-	if (SDL_PollEvent(&event)) {
-		if (event.type == SDL_QUIT) {
-			return 1;
-		}
-	}
-	return 0;
-}
-
-

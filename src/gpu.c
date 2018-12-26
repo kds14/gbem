@@ -112,7 +112,8 @@ int gpu_tick() {
 		set_mem(LY, current_line);
 	} else if (!(current_time % (SCANLINE_TIME - HBLANK_TIME))) {
 		// HBLANK
-		get_stat()->mode_flag = 00;
+		if (!vblank)
+			get_stat()->mode_flag = 00;
 	} 
 
 	if (!(current_time % VDRAW_TIME) && current_time) {
@@ -125,14 +126,13 @@ int gpu_tick() {
 	if (!(current_time % REFRESH_TIME) && current_time) {
 		// END
 		display_render();
-		wait_clear_renderer();
+		status = wait_clear_renderer();
 		get_if()->vblank = 0;
 		current_time = -1;
 		current_line = 0;
 		set_mem(LY, current_line);
 		get_stat()->mode_flag = 0x02;
 		vblank = 0;
-		status = handle_display_events();
 	}
 	current_time += PIXEL_TIME;
 	return status;
