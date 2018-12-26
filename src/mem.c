@@ -1,8 +1,11 @@
 #include "mem.h"
+#include <stdio.h>
 
 static const size_t DMA_SIZE = 0xA0;
 
 void dma(uint8_t addr) {
+	//printf("DMA\n");
+	return;
 	uint8_t *dest = &gb_mem[OAM];
 	uint16_t src_addr = addr << 8;
 	uint8_t *src = &gb_mem[src_addr];
@@ -14,6 +17,9 @@ void set_mem(uint16_t dest, uint8_t data) {
 		return;
 	if (dest >= 0xFE00 && dest <= 0xFE9F && get_stat()->mode_flag > 0x01)
 		return;
+	if (dest >= 0x8000 && dest <= 0x97FF) {
+//		printf("%04X : %d\n", dest, data);
+	}
 	gb_mem[dest] = data;
 	if (dest >= INTERNAL_RAM0 && dest <= 0xDDFF) {
 		gb_mem[data + ECHO_OFFSET] = data;

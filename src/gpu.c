@@ -73,16 +73,10 @@ void draw_background(uint8_t y) {
 	uint8_t x_start = scx / 8;
 	uint8_t y_start = (y + scy) / 8;
 	uint8_t line = (scy + y) % 8;
-	for (int i = 0; i < 18; i++) {
+	for (int i = 0; i < 20; i++) {
 		uint8_t tile = i + x_start;
-		/*while (tile >= 32) {
-			tile -= 32;
-		}*/
 		uint8_t tile_start_x = i * 8;
 		uint16_t tile_addr = tile_map_addr + tile + y_start * 32;
-		/*while (tile_addr > BG_MAP_DATA0_END) {
-			tile_addr = BG_MAP_DATA0 + tile_addr - BG_MAP_DATA0_END;
-		}*/
 		uint8_t index = gb_mem[tile_addr];
 		uint8_t *data = get_tile_data(index, 16, lcdc->bg_tile_sel);
 		uint8_t row0 = data[line * 2];

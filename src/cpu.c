@@ -13,6 +13,8 @@
 //static const int CLOCK_SPEED = 4195304;
 static const int MAX_CYCLES_PER_FRAME = 70224;
 
+struct gb_state *gbs = NULL;
+
 /*
  * Registers:
  * A F (Z, N, H, C flag bits)
@@ -2768,8 +2770,10 @@ void instruction_cycle(struct gb_state *state) {
 	}
 }
 
+
 void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_flag) {
 	struct gb_state *state = calloc(1, sizeof(struct gb_state));
+	gbs = state;
 	state->mem = calloc(0x10000, sizeof(uint8_t));
 	gb_mem = state->mem;
 
