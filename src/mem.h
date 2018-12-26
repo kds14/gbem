@@ -86,7 +86,7 @@ struct lcdc
 	uint8_t bg_tile_map : 1; // 0: 0x9800-0x9BFF, 1: 0x9C00-0x9FFF
 	uint8_t bg_tile_sel : 1; // 0: 0x8800-0x97FF, 1: 0x8000-0x8FFF
 	uint8_t win_display : 1; // 0: off, 1: on
-	uint8_t win_tile_map_loc : 1; // 0: 0x9800-0x9BFF, 1: 0x9C00-0x9FFF
+	uint8_t win_tile_map : 1; // 0: 0x9800-0x9BFF, 1: 0x9C00-0x9FFF
 	uint8_t lcd_control_op : 1; // 0: stop, 1: op
 };
 
