@@ -1654,7 +1654,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x35:
 			/* DEC (HL) */
-			set_sub8_flags(state, state->mem[state->hl]++, 1, 0);
+			set_sub8_flags(state, state->mem[state->hl]--, 1, 0);
 			break;
 		case 0x36:
 			/* LD (HL),n */
