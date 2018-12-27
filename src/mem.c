@@ -13,12 +13,19 @@ void dma(uint8_t addr) {
 }
 
 void set_mem(uint16_t dest, uint8_t data) {
+	if (dest < 0x8000) {
+		printf("ROM WRITE: %04X : %02X\n", dest, data);
+		return;
+	}
 	if (dest >= 0x8000 && dest <= 0x9FFF && get_stat()->mode_flag == 0x03)
 		return;
 	if (dest >= 0xFE00 && dest <= 0xFE9F && get_stat()->mode_flag > 0x01)
 		return;
-	if (dest >= 0x8000 && dest <= 0x97FF) {
-//		printf("%04X : %d\n", dest, data);
+	if (dest == 0xFF02 && data == 0x81) {
+		printf("%c", gb_mem[0xFF01]);
+	}
+	if (dest >= 0x9800 && dest <= 0x9BFF && data != 0x20) {
+		//printf("%04X : %02X\n", dest, data);
 	}
 	gb_mem[dest] = data;
 	if (dest >= INTERNAL_RAM0 && dest <= 0xDDFF) {

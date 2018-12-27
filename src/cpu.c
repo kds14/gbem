@@ -259,19 +259,11 @@ void print_registers(struct gb_state *state) {
 	printf("SPECIAL", state->a, state->b, state->c, state->d, state->e, state->f, state->h, state->l, state->sp, state->pc);*/
 }
 
-void handle_debug(int start_pc, int pc, uint8_t* op, int cycles) {
+void handle_debug(int start_pc, int pc, uint8_t* op, int cycles, int cb) {
 	if (debug_enabled) {
 		uint16_t extra = 0;
 		uint8_t extra_flag = 0;
-		/*fprintf(stdout, "WEE: %d\n", extra_size);
-		if (extra_size == 3) {
-			extra = op[2] << 8 | op[1];
-			extra_flag = 2;
-		} else if (extra_size == 2) {
-			extra = op[1];
-			extra_flag = 1;
-		}*/
-		add_debug(start_pc, *op, cycles, extra, extra_flag);
+		add_debug(start_pc, *op, cycles, extra, extra_flag, cb);
 	}
 }
 
@@ -1351,7 +1343,7 @@ int execute_cb(struct gb_state *state) {
 			cycles = 0;
 			break;
 	}
-	handle_debug(pc_start, state->pc, op, cycles);
+	handle_debug(pc_start, state->pc, op, cycles, 1);
 	return cycles;
 }
 
@@ -2565,7 +2557,7 @@ int execute(struct gb_state *state) {
 			cycles = 0;
 			break;
 	};
-	handle_debug(pc_start, state->pc, op, cycles);
+	handle_debug(pc_start, state->pc, op, cycles, 0);
 	return cycles;
 }
 
@@ -2861,6 +2853,7 @@ int main(int argc, char **argv) {
 
 	if (debug_flag) {
 		init_debug(debug_size);
+		atexit(printf_debug_op_count);
 	} else {
 		debug_enabled = 0;
 	}
