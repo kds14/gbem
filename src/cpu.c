@@ -90,9 +90,9 @@ void set_add8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry)
 void set_sub8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry) {
 	state->fn = 1;
 	state->fz = a == b;
-	state->fh = (a & 0x0F) >= (b & 0x0F);
+	state->fh = (((a & 0xF) - (b & 0xF)) & 0xF) > (a & 0xF);
 	if (use_carry) {
-		state->fc = a >= b;
+		state->fc = (((uint16_t)(a & 0xFF) - (uint16_t)(b & 0xFF)) & 0xFF) > (a & 0xFF);
 	}
 }
 
@@ -2649,6 +2649,7 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 }
 
 int tick(struct gb_state *state, int *total_cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
+	printf("%04X: %02X ", state->pc, state->mem[state->pc]);
 	int cycles = 4;
 	if (!state->halt) {
 		cycles = execute(state);

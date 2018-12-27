@@ -4,7 +4,7 @@
 static const size_t DMA_SIZE = 0xA0;
 
 void dma(uint8_t addr) {
-	//printf("DMA\n");
+	printf("DMA\n");
 	return;
 	uint8_t *dest = &gb_mem[OAM];
 	uint16_t src_addr = addr << 8;
