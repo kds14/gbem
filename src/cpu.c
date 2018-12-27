@@ -73,8 +73,8 @@ struct gb_state
 
 void set_add16_flags(struct gb_state *state, uint16_t a, uint16_t b) {
 	state->fn = 0;
-	state->fh = (((a & 0xFF) + (b & 0xFF)) & 0x100) == 0x100;
-	state->fc = ((((uint32_t)a & 0xFFFF) + ((uint32_t)b & 0xFFFF)) & 0x10000) == 0x10000;
+	state->fh = (((a & 0x0FFF) + (b & 0x0FFF)) & 0x1000) == 0x1000;
+	state->fc = ((((uint32_t)a & 0x0000FFFF) + ((uint32_t)b & 0x0000FFFF)) & 0x10000) == 0x10000;
 }
 
 void set_add8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry) {
@@ -90,9 +90,9 @@ void set_add8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry)
 void set_sub8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry) {
 	state->fn = 1;
 	state->fz = a == b;
-	state->fh = (((a & 0xF) - (b & 0xF)) & 0xF) > (a & 0xF);
+	state->fh = ((a  - b) & 0xF) > (a & 0xF);
 	if (use_carry) {
-		state->fc = (((uint16_t)(a & 0xFF) - (uint16_t)(b & 0xFF)) & 0xFF) > (a & 0xFF);
+		state->fc = a < b;
 	}
 }
 
@@ -144,7 +144,10 @@ void cpA(struct gb_state *state, uint8_t val) {
 }
 
 void pop(struct gb_state *state, uint16_t *dest) {
-	memcpy(dest, &state->mem[state->sp], 2);
+	//memcpy(dest, &state->mem[state->sp], 2);
+	uint8_t *ptr = (uint8_t*)dest;
+	ptr[0] = state->mem[state->sp];
+	ptr[1] = state->mem[state->sp + 1];
 	state->sp += 2;
 }
 
@@ -191,7 +194,7 @@ void rot_right(struct gb_state *state, uint8_t *reg) {
 void rot_right_carry(struct gb_state *state, uint8_t *reg) {
 	uint8_t val = *reg;
 	state->fc = val & 0x01;
-	*reg = state->fc << 7 | val >> 1;
+	*reg = (state->fc << 7) | (val >> 1);
 	state->fz = *reg == 0;
 	state->fn = 0;
 	state->fh = 0;
@@ -200,7 +203,7 @@ void rot_right_carry(struct gb_state *state, uint8_t *reg) {
 void rot_left_carry(struct gb_state *state, uint8_t *reg) {
 	uint8_t val = *reg;
 	state->fc = val >> 7;
-	*reg = val << 1 | state->fc;
+	*reg = (val << 1) | state->fc;
 	state->fz = *reg == 0;
 	state->fn = 0;
 	state->fh = 0;
@@ -210,7 +213,7 @@ void rot_left(struct gb_state *state, uint8_t *reg) {
 	uint8_t val = *reg;
 	uint8_t bit0 = state->fc;
 	state->fc = val >> 7;
-	*reg = val << 1 | bit0;
+	*reg = (val << 1) | bit0;
 	state->fn = 0;
 	state->fz = *reg == 0;
 	state->fh = 0;
@@ -1356,7 +1359,7 @@ int execute(struct gb_state *state) {
 	uint8_t *op = &state->mem[pc];
 	int cycles = 4;
 	int pc_start = state->pc++;
-	uint16_t nn = (op[2] << 8) | op[1];
+	uint16_t nn = ((uint16_t)op[2] << 8) | op[1];
 	switch (*op) {
 		case 0x00:
 			/* NOP */
@@ -1554,6 +1557,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x27:
 			/* DAA */
+			printf("DAA\n");
 			if (state->fn) {
 				if (state->fc) {
 					state->a -= 0x60;
@@ -2649,7 +2653,8 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 }
 
 int tick(struct gb_state *state, int *total_cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
-	printf("%04X: %02X ", state->pc, state->mem[state->pc]);
+	//if (state->pc != 0xC7D2)
+	//	printf("%04X: %02X ", state->pc, state->mem[state->pc]);
 	int cycles = 4;
 	if (!state->halt) {
 		cycles = execute(state);
