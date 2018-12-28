@@ -67,6 +67,7 @@ struct gb_state
 	uint16_t pc;
 	uint16_t ime;
 	uint8_t halt;
+	uint8_t di;
 	uint8_t *mem;
 
 };
@@ -227,8 +228,11 @@ void sra(struct gb_state *state, uint8_t *reg) {
 }
 
 void srl(struct gb_state *state, uint8_t *reg) {
-	rot_right(state, reg);
-	*reg = 0x7F & *reg;
+	uint8_t val = *reg;
+	state->fc = val * 0x1;
+	*reg = val >> 1;
+	state->fn = 0;
+	state->fh = 0;
 	state->fz = *reg == 0;
 }
 
@@ -1557,7 +1561,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x27:
 			/* DAA */
-			printf("DAA\n");
+			//printf("DAA\n");
 			if (state->fn) {
 				if (state->fc) {
 					state->a -= 0x60;
@@ -1655,6 +1659,7 @@ int execute(struct gb_state *state) {
 		case 0x35:
 			/* DEC (HL) */
 			set_sub8_flags(state, state->mem[state->hl]--, 1, 0);
+			cycles = 12;
 			break;
 		case 0x36:
 			/* LD (HL),n */
@@ -2488,11 +2493,11 @@ int execute(struct gb_state *state) {
 			state->a = state->mem[op[1] + IO_PORTS];
 			cycles = 12;
 			state->pc++;
-			//printf("LOADING %02X (%04X) into A\nNEXT: %04X", state->a, op[1] + IO_PORTS, state->pc++);
 			break;
 		case 0xF1:
 			/* POP AF */
 			pop(state, &state->af);
+			state->fl = 0;
 			cycles = 12;
 			break;
 		case 0xF2:
@@ -2502,11 +2507,12 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xF3:
 			/* DI */
-			state->ime = 0;
+			state->di = 1;
 			break;
 		case 0xF5:
 			/* PUSH AF */
 			cycles = 16;
+			state->fl = 0;
 			push(state, state->af);
 			break;
 		case 0xF6:
@@ -2561,14 +2567,28 @@ int execute(struct gb_state *state) {
 			cycles = 0;
 			break;
 	};
+	if (state->di) {
+		state->ime = 0;
+		state->di = 0;
+	}
+	/*printf("%04X:", pc);
+	int k = 0;
+	int diff = state->pc - pc;
+	if (1 || diff <= 0 || diff > 3) {
+		printf("%02X %02X %02X", state->mem[pc], state->mem[pc+1], state->mem[pc+2]);
+	} else {
+		for (k = 0; k < diff; ++k) {
+			printf(" %02X", state->mem[pc+k]);
+		}
+	}
+	puts("");
+	print_registers(state);*/
 	handle_debug(pc_start, state->pc, op, cycles, 0);
 	return cycles;
 }
 
-
-
 void print_memory(struct gb_state *s) {
-	int column_length = 0x40;
+	int column_length = 0x20;
 	for (int i = 0x00; i < 0x10000; i+= column_length) {
 		printf("%04X\t", i);
 		for (int j = i; j < i + column_length; j++) {
@@ -2653,8 +2673,10 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 }
 
 int tick(struct gb_state *state, int *total_cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
-	//if (state->pc != 0xC7D2)
-	//	printf("%04X: %02X ", state->pc, state->mem[state->pc]);
+	//printf("%04X: %02X ", state->pc, state->mem[state->pc]);
+	if (state->pc == 0xC7D2 && state->mem[state->pc] == 0x18) {
+		//exit(0);
+	}
 	int cycles = 4;
 	if (!state->halt) {
 		cycles = execute(state);
@@ -2816,6 +2838,12 @@ uint8_t *read_file(char *path, long *size) {
 	return bin;
 }
 
+void at_exit() {
+	//printf_debug_op_count();
+	fprintf_debug_info(stdout);
+	print_memory(gbs);
+}
+
 int main(int argc, char **argv) {
 	char *bootstrap_path;
 	char *cart_path;
@@ -2859,7 +2887,7 @@ int main(int argc, char **argv) {
 
 	if (debug_flag) {
 		init_debug(debug_size);
-		atexit(printf_debug_op_count);
+		atexit(at_exit);
 	} else {
 		debug_enabled = 0;
 	}
