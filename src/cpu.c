@@ -72,6 +72,51 @@ struct gb_state
 
 };
 
+void daa(struct gb_state *state) {
+	int res = state->a;
+	/*if (state->fn) {
+		if (state->fc) {
+			res -= 0x60;
+		}
+		if (state->fh) {
+			res -= 0x06;
+			if (!state->fc)
+				res &= 0xFF;
+		}
+	} else {
+		if ((res & 0xFF) > 0x9F || state->fh) {
+			res += 0x60;
+		}
+		if ((res & 0x0F) > 0x09 || state->fc) {
+			res += 0x06;
+		}
+	}
+	state->fc = ((res & 0x100) == 0x100);
+	state->fh = 0;
+	state->a = res;
+	state->fz = !state->a;*/
+	if ((res & 0x0F) > 0x9 || state->fh) {
+		if (state->fn) {
+			res -= 0x06;
+			if (!state->fc)
+				res &= 0xFF;
+		} else {
+			res += 0x06;
+		}
+	}
+	if ((res & 0xF0) > 0x90 || state->fc) {
+		if (state->fn) {
+			res -= 0x60;
+		} else {
+			res += 0x60;
+		}
+	}
+	state->fc = ((res & 0x100) == 0x100);
+	state->fh = 0;
+	state->a = res & 0xFF;
+	state->fz = !state->a;
+}
+
 void set_add16_flags(struct gb_state *state, uint16_t a, uint16_t b) {
 	state->fn = 0;
 	state->fh = (((a & 0x0FFF) + (b & 0x0FFF)) & 0x1000) == 0x1000;
@@ -109,6 +154,24 @@ int load8val2reg(struct gb_state *state, uint8_t *reg, uint8_t val) {
 void addA(struct gb_state *state, uint8_t val) {
 	set_add8_flags(state, state->a, val, 1);
 	state->a += val;
+}
+
+void adc(struct gb_state *state, uint8_t val) {
+	uint16_t res = state->a + val + state->fc;
+	state->fn = 0;
+	state->fz = !(res & 0xFF);
+	state->fh = (((state->a & 0xF) + (val & 0xF) + state->fc) & 0x10) == 0x10;
+	state->fc = (res & 0x100) == 0x100;
+	state->a = res & 0xFF;
+}
+
+void subc(struct gb_state *state, uint8_t val) {
+	uint16_t res = state->a - (uint16_t)(val + state->fc);
+	state->fn = 1;
+	state->fz = !(res & 0xFF);
+	state->fh = ((val + state->fc) & 0xF) > (state->a & 0xF) || ((val & 0xF) > (state->a & 0xF));
+	state->fc = state->a < (uint16_t)(val + state->fc) || state->a < val;
+	state->a = res & 0xFF;
 }
 
 void subA(struct gb_state *state, uint8_t val) {
@@ -263,7 +326,7 @@ void print_registers(struct gb_state *state) {
 	printf("A: %02X, B: %02X, C: %02X, D: %02X, E: %02X, F: %02X, H: %02X, L: %02X, SP: %04X, PC: %04X\n", state->a, state->b, state->c, state->d, state->e, state->f, state->h, state->l, state->sp, state->pc);
 	printf("FLAGS: Z:%d N:%d H:%d C:%d None:%d\n", state->fz, state->fn, state->fh, state->fc, state->fl );
 	/*printf("SPECIAL REGISTERS:\n");
-	printf("SPECIAL", state->a, state->b, state->c, state->d, state->e, state->f, state->h, state->l, state->sp, state->pc);*/
+	  printf("SPECIAL", state->a, state->b, state->c, state->d, state->e, state->f, state->h, state->l, state->sp, state->pc);*/
 }
 
 void handle_debug(int start_pc, int pc, uint8_t* op, int cycles, int cb) {
@@ -1562,24 +1625,7 @@ int execute(struct gb_state *state) {
 		case 0x27:
 			/* DAA */
 			//printf("DAA\n");
-			if (state->fn) {
-				if (state->fc) {
-					state->a -= 0x60;
-				}
-				if (state->fh) {
-					state->a -= 0x06;
-				}
-			} else {
-				if ((state->a & 0xFF) > 0x99 || state->fh) {
-					state->a += 0x60;
-					state->fc = 1;
-				}
-				if ((state->a & 0x0F) > 0x09 || state->fc) {
-					state->a += 0x06;
-				}
-			}
-			state->fz = state->a == 0;
-			state->fh = 0;
+			daa(state);
 			break;
 		case 0x28:
 			/* JR Z,n */
@@ -2025,36 +2071,36 @@ int execute(struct gb_state *state) {
 			break; 
 		case 0x88:
 			/* ADC A,B */
-			addA(state, state->b + state->fc);
+			adc(state, state->b);
 			break; 
 		case 0x89:
 			/* ADC A,C */
-			addA(state, state->c + state->fc);
+			adc(state, state->c);
 			break; 
 		case 0x8A:
 			/* ADC A,D */
-			addA(state, state->d + state->fc);
+			adc(state, state->d);
 			break; 
 		case 0x8B:
 			/* ADC A,E */
-			addA(state, state->e + state->fc);
+			adc(state, state->e);
 			break; 
 		case 0x8C:
 			/* ADC A,H */
-			addA(state, state->h + state->fc);
+			adc(state, state->h);
 			break; 
 		case 0x8D:
 			/* ADC A,L */
-			addA(state, state->l + state->fc);
+			adc(state, state->l);
 			break; 
 		case 0x8E:
 			/* ADC A,(HL) */
-			addA(state, state->mem[state->hl] + state->fc);
+			adc(state, state->mem[state->hl]);
 			cycles = 8;
 			break; 
 		case 0x8F:
 			/* ADC A,A */
-			addA(state, state->a + state->fc);
+			adc(state, state->a);
 			break; 
 		case 0x90:
 			/* SUB A,B */
@@ -2091,36 +2137,36 @@ int execute(struct gb_state *state) {
 			break; 
 		case 0x98:
 			/* SBC A,B */
-			subA(state, state->b + state->fc);
+			subc(state, state->b);
 			break; 
 		case 0x99:
 			/* SBC A,C */
-			subA(state, state->c + state->fc);
+			subc(state, state->c);
 			break; 
 		case 0x9A:
 			/* SBC A,D */
-			subA(state, state->d + state->fc);
+			subc(state, state->d);
 			break; 
 		case 0x9B:
 			/* SBC A,E */
-			subA(state, state->e + state->fc);
+			subc(state, state->e);
 			break; 
 		case 0x9C:
 			/* SBC A,H */
-			subA(state, state->h + state->fc);
+			subc(state, state->h);
 			break; 
 		case 0x9D:
 			/* SBC A,L */
-			subA(state, state->l + state->fc);
+			subc(state, state->l);
 			break; 
 		case 0x9E:
 			/* SBC A,(HL) */
-			subA(state, state->mem[state->hl] + state->fc);
+			subc(state, state->mem[state->hl]);
 			cycles = 8;
 			break; 
 		case 0x9F:
 			/* SBC A,A */
-			subA(state, state->a + state->fc);
+			subc(state, state->a);
 			break;
 			//HERE
 		case 0xA0:
@@ -2572,17 +2618,17 @@ int execute(struct gb_state *state) {
 		state->di = 0;
 	}
 	/*printf("%04X:", pc);
-	int k = 0;
-	int diff = state->pc - pc;
-	if (1 || diff <= 0 || diff > 3) {
-		printf("%02X %02X %02X", state->mem[pc], state->mem[pc+1], state->mem[pc+2]);
-	} else {
-		for (k = 0; k < diff; ++k) {
-			printf(" %02X", state->mem[pc+k]);
-		}
-	}
-	puts("");
-	print_registers(state);*/
+	  int k = 0;
+	  int diff = state->pc - pc;
+	  if (1 || diff <= 0 || diff > 3) {
+	  printf("%02X %02X %02X", state->mem[pc], state->mem[pc+1], state->mem[pc+2]);
+	  } else {
+	  for (k = 0; k < diff; ++k) {
+	  printf(" %02X", state->mem[pc+k]);
+	  }
+	  }
+	  puts("");
+	  print_registers(state);*/
 	handle_debug(pc_start, state->pc, op, cycles, 0);
 	return cycles;
 }
