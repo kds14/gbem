@@ -136,7 +136,7 @@ void set_add8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry)
 void set_sub8_flags(struct gb_state *state, uint8_t a, uint8_t b, int use_carry) {
 	state->fn = 1;
 	state->fz = a == b;
-	state->fh = ((a  - b) & 0xF) > (a & 0xF);
+	state->fh = ((a - b) & 0xF) > (a & 0xF);
 	if (use_carry) {
 		state->fc = a < b;
 	}
@@ -166,12 +166,15 @@ void adc(struct gb_state *state, uint8_t val) {
 }
 
 void subc(struct gb_state *state, uint8_t val) {
-	uint16_t res = state->a - (uint16_t)(val + state->fc);
+	uint8_t tmp = state->a - state->fc;
+	state->fh = ((state->a - state->fc) & 0xF) > (state->a & 0xF);
+	state->fc = state->a < state->fc;
+	uint8_t res = tmp - val;
+	state->fh |= ((tmp - val) & 0xF) > (tmp & 0xF);
+	state->fc |= tmp < val;
 	state->fn = 1;
-	state->fz = !(res & 0xFF);
-	state->fh = ((val + state->fc) & 0xF) > (state->a & 0xF) || ((val & 0xF) > (state->a & 0xF));
-	state->fc = state->a < (uint16_t)(val + state->fc) || state->a < val;
-	state->a = res & 0xFF;
+	state->fz = !res;
+	state->a = res;
 }
 
 void subA(struct gb_state *state, uint8_t val) {
@@ -1583,6 +1586,7 @@ int execute(struct gb_state *state) {
 		case 0x1F:
 			/* RRA */
 			rot_right(state, &state->a);
+			state->fz = 0;
 			break;
 		case 0x20:
 			/* JR NZ,n */
