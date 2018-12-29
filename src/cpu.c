@@ -2398,7 +2398,7 @@ int execute(struct gb_state *state) {
 		case 0xCE:
 			/* ADC A,n */
 			state->pc++;
-			addA(state, op[1] + state->fc);
+			adc(state, op[1]);
 			cycles = 8;
 			break;
 		case 0xCF:
@@ -2472,7 +2472,7 @@ int execute(struct gb_state *state) {
 		case 0xDE:
 			/* SDC A,n */
 			state->pc++;
-			subA(state, op[1] + state->fc);
+			subc(state, op[1]);
 			cycles = 8;
 			break;
 		case 0xDF:
