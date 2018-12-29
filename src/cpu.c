@@ -278,7 +278,7 @@ void rot_left_carry(struct gb_state *state, uint8_t *reg) {
 
 void rot_left(struct gb_state *state, uint8_t *reg) {
 	uint8_t val = *reg;
-	uint8_t bit0 = state->fc;
+	uint8_t bit0 = state->fc & 0x01;
 	state->fc = val >> 7;
 	*reg = (val << 1) | bit0;
 	state->fn = 0;
@@ -312,7 +312,7 @@ void swap(struct gb_state *state, uint8_t *reg) {
 }
 
 void bit(struct gb_state *state, uint8_t bit, uint8_t *reg) {
-	state->fz = (*reg >> bit) & 0x01;
+	state->fz = !((*reg >> bit) & 0x01);
 	state->fn = 0;
 	state->fh = 1;
 }
@@ -481,43 +481,51 @@ int execute_cb(struct gb_state *state) {
 		case 0x20:
 			/* SLA B */
 			rot_left(state, &state->b);
-			state->b = state->b & 0xFE;
+			state->b &= 0xFE;
+			state->fz = !state->b;
 			break;
 		case 0x21:
 			/* SLA C */
 			rot_left(state, &state->c);
-			state->c = state->c & 0xFE;
+			state->c &= 0xFE;
+			state->fz = !state->c;
 			break;
 		case 0x22:
 			/* SLA D */
 			rot_left(state, &state->d);
-			state->d = state->d & 0xFE;
+			state->d &= 0xFE;
+			state->fz = !state->d;
 			break;
 		case 0x23:
 			/* SLA E */
 			rot_left(state, &state->e);
-			state->e = state->e & 0xFE;
+			state->e &= 0xFE;
+			state->fz = !state->e;
 			break;
 		case 0x24:
 			/* SLA H */
 			rot_left(state, &state->h);
-			state->h = state->h & 0xFE;
+			state->h &= 0xFE;
+			state->fz = !state->h;
 			break;
 		case 0x25:
 			/* SLA L */
 			rot_left(state, &state->l);
-			state->l = state->l & 0xFE;
+			state->l &= 0xFE;
+			state->fz = !state->l;
 			break;
 		case 0x26:
 			/* SLA (HL) */
 			rot_left(state, &state->mem[state->hl]);
 			set_mem(state->hl, state->mem[state->hl] & 0xFE);
+			state->fz = !state->mem[state->hl];
 			cycles = 16;
 			break;
 		case 0x27:
 			/* SLA A */
 			rot_left(state, &state->a);
-			state->a = state->a & 0xFE;
+			state->a &= 0xFE;
+			state->fz = !state->a;
 			break;
 		case 0x28:
 			/* SRA B */
