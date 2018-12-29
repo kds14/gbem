@@ -14,6 +14,7 @@ void dma(uint8_t addr) {
 void set_mem(uint16_t dest, uint8_t data) {
 	if (dest < 0x8000) {
 		printf("ROM WRITE: %04X : %02X\n", dest, data);
+		//exit(0);
 		return;
 	}
 	if (dest >= 0x8000 && dest <= 0x9FFF && get_stat()->mode_flag == 0x03)

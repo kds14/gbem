@@ -66,6 +66,7 @@ struct gb_state
 	uint16_t sp;
 	uint16_t pc;
 	uint16_t ime;
+	uint16_t prev_ime;
 	uint8_t halt;
 	uint8_t di;
 	uint8_t ei_flag;
@@ -1462,7 +1463,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x08:
 			/* LD (nn),SP */
-			set_mem(nn, state->sp);
+			set_mem(nn, state->sp & 0xFF);
+			set_mem(nn+1, state->sp >> 8);
 			state->pc += 2;
 			cycles = 20;
 			break;
@@ -2435,7 +2437,7 @@ int execute(struct gb_state *state) {
 		case 0xD9:
 			/* RETI */
 			ret(state, 1);
-			state->ime = 1;
+			state->ime = state->prev_ime;
 			cycles = 8;
 			break;
 		case 0xDA:
@@ -2632,7 +2634,7 @@ int execute(struct gb_state *state) {
 }
 
 void print_memory(struct gb_state *s) {
-	int column_length = 0x20;
+	int column_length = 0x10;
 	for (int i = 0x00; i < 0x10000; i+= column_length) {
 		printf("%04X\t", i);
 		for (int j = i; j < i + column_length; j++) {
@@ -2645,6 +2647,7 @@ void print_memory(struct gb_state *s) {
 void handle_interrupts(struct gb_state *state) {
 	if (!state->ime)
 		return;
+	state->prev_ime = state->ime;
 	uint8_t ie = state->mem[IE];
 	uint8_t iff = state->mem[IF];
 	uint16_t addr = 0x0000;
@@ -2884,7 +2887,9 @@ uint8_t *read_file(char *path, long *size) {
 
 void at_exit() {
 	//printf_debug_op_count();
+	printf("PC: %04X INS: %02X\n", gbs->pc, gbs->mem[gbs->pc]);
 	fprintf_debug_info(stdout);
+	printf("MEMORY:\n");
 	print_memory(gbs);
 }
 
