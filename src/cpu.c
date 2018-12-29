@@ -68,50 +68,32 @@ struct gb_state
 	uint16_t ime;
 	uint8_t halt;
 	uint8_t di;
+	uint8_t ei_flag;
 	uint8_t *mem;
 
 };
 
 void daa(struct gb_state *state) {
 	int res = state->a;
-	/*if (state->fn) {
-		if (state->fc) {
-			res -= 0x60;
-		}
+	if (state->fn) {
 		if (state->fh) {
 			res -= 0x06;
 			if (!state->fc)
 				res &= 0xFF;
 		}
-	} else {
-		if ((res & 0xFF) > 0x9F || state->fh) {
-			res += 0x60;
-		}
-		if ((res & 0x0F) > 0x09 || state->fc) {
-			res += 0x06;
-		}
-	}
-	state->fc = ((res & 0x100) == 0x100);
-	state->fh = 0;
-	state->a = res;
-	state->fz = !state->a;*/
-	if ((res & 0x0F) > 0x9 || state->fh) {
-		if (state->fn) {
-			res -= 0x06;
-			if (!state->fc)
-				res &= 0xFF;
-		} else {
-			res += 0x06;
-		}
-	}
-	if ((res & 0xF0) > 0x90 || state->fc) {
-		if (state->fn) {
+		if (state->fc) {
 			res -= 0x60;
-		} else {
+		}
+	}
+	else {
+		if ((res & 0x0F) > 0x9 || state->fh) {
+			res += 0x06;
+		}
+		if (res > 0x9F || state->fc) {
 			res += 0x60;
 		}
 	}
-	state->fc = ((res & 0x100) == 0x100);
+	state->fc |= res > 0xFF;
 	state->fh = 0;
 	state->a = res & 0xFF;
 	state->fz = !state->a;
@@ -2606,7 +2588,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xFB:
 			/* EI */
-			state->ime = 1;
+			state->ei_flag = 1;
 			break;
 		case 0xFE:
 			/* CP A,n */
@@ -2626,8 +2608,12 @@ int execute(struct gb_state *state) {
 			break;
 	};
 	if (state->di) {
-		state->ime = 0;
 		state->di = 0;
+		state->ime = 0;
+	}
+	if (state->ei_flag) {
+		state->ime = 1;
+		state->ei_flag = 0;
 	}
 	/*printf("%04X:", pc);
 	  int k = 0;
