@@ -1,4 +1,5 @@
 #include "mem.h"
+#include "display.h"
 #include <stdio.h>
 
 static const size_t DMA_SIZE = 0xA0;
@@ -6,14 +7,13 @@ static const size_t DMA_SIZE = 0xA0;
 void dma(uint8_t addr) {
 	uint8_t *dest = &gb_mem[OAM];
 	uint16_t src_addr = addr << 8;
-	printf("DMA %04X\n", src_addr);
+	//printf("DMA %04X\n", src_addr);
 	uint8_t *src = &gb_mem[src_addr];
 	memcpy(dest, src, DMA_SIZE);
 }
 
 void set_mem(uint16_t dest, uint8_t data) {
 	if (dest < 0x8000) {
-		printf("ROM WRITE: %04X : %02X\n", dest, data);
 		//exit(0);
 		return;
 	}
@@ -26,6 +26,22 @@ void set_mem(uint16_t dest, uint8_t data) {
 	}
 	if (dest >= 0x9800 && dest <= 0x9BFF && data != 0x20) {
 		//printf("%04X : %02X\n", dest, data);
+	}
+
+	// Setting 7th bit in LCDC sets LY = 0
+	if (dest == LCDC) {
+		uint8_t bit7 = data >> 7;
+		uint8_t old_bit7 = gb_mem[LCDC] >> 7;
+		if (bit7 != old_bit7) {
+			gb_mem[LY] = 0;
+		}
+		/*if (!old_bit7 && bit7) {
+			printf("CLEAR\n");
+			clear_renderer();
+		} else if (old_bit7 && !bit7) {
+			printf("CLEAR\n");
+			clear_renderer();
+		}*/
 	}
 	gb_mem[dest] = data;
 	if (dest >= INTERNAL_RAM0 && dest <= 0xDDFF) {

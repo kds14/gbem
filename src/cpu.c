@@ -1416,8 +1416,7 @@ int execute_cb(struct gb_state *state) {
  * Returns number of clock cycles.
  */
 int execute(struct gb_state *state) {
-	if (state->pc == 0) {
-		//printf("RST 00\n");
+	if (state->pc >= 0x8000) {
 	}
 	int pc = state->pc;
 	uint8_t *op = &state->mem[pc];

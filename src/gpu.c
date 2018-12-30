@@ -126,7 +126,11 @@ void draw_scan_line(uint8_t y) {
 
 int gpu_tick() {
 	struct lcdc *lcdc = get_lcdc();
-	if (lcdc->win_display) {
+	if (!lcdc->lcd_control_op) {
+		get_stat()->mode_flag = 00;
+		current_time = 0;
+		current_line = 0;
+		vblank = 0;
 		return 0;
 	}
 	if (!(current_time % SCANLINE_TIME)) {
@@ -136,6 +140,7 @@ int gpu_tick() {
 		// TODO: mode_flag = 11;
 		draw_scan_line(current_line++);
 		set_mem(LY, current_line);
+		display_render();
 	} else if (!(current_time % (SCANLINE_TIME - HBLANK_TIME))) {
 		// HBLANK
 		if (!vblank)
@@ -151,13 +156,8 @@ int gpu_tick() {
 	int status = 0;
 	if (!(current_time % REFRESH_TIME) && current_time) {
 		// END
-		if (get_lcdc()->lcd_control_op) {
-			display_render();
-			status = wait_clear_renderer();
-		} else {
-			status = wait_clear_renderer();
-			display_render();
-		}
+		display_render();
+		status = wait_clear_renderer();
 		get_if()->vblank = 0;
 		current_time = -1;
 		current_line = 0;

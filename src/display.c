@@ -38,6 +38,11 @@ void display_render() {
 	SDL_RenderPresent(renderer);
 }
 
+void clear_renderer() {
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+	SDL_RenderClear(renderer);
+}
+
 Uint32 frame_time = 0;
 
 int wait_clear_renderer() {
@@ -51,8 +56,8 @@ int wait_clear_renderer() {
 			return 1;
 		}
 	}
-	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-	SDL_RenderClear(renderer);
+	//SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+	//SDL_RenderClear(renderer);
 	frame_time = SDL_GetTicks();
 	return 0;
 }
