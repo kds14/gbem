@@ -1417,7 +1417,7 @@ int execute_cb(struct gb_state *state) {
  */
 int execute(struct gb_state *state) {
 	if (state->pc == 0) {
-		printf("RST 00\n");
+		//printf("RST 00\n");
 	}
 	int pc = state->pc;
 	uint8_t *op = &state->mem[pc];
@@ -1466,8 +1466,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x08:
 			/* LD (nn),SP */
-			set_mem(nn, state->sp & 0xFF);
-			set_mem(nn+1, state->sp >> 8);
+			set_mem(nn, (uint8_t)(state->sp & 0xFF));
+			set_mem(nn+1, (uint8_t)(state->sp >> 8));
 			state->pc += 2;
 			cycles = 20;
 			break;
@@ -1632,7 +1632,7 @@ int execute(struct gb_state *state) {
 			if (state->fz) {
 				//printf("%04X JR Z %02X\n", state->pc-2, op[1]);
 				//print_registers(state);
-				state->pc += op[1];
+				state->pc += (int8_t)op[1];
 			}
 			cycles = 8;
 			break;
@@ -1687,9 +1687,8 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x32:
 			/* LD (HL-),A */
-			set_mem(state->hl, state->a);
+			set_mem(state->hl--, state->a);
 			cycles = 8;
-			state->hl--;
 			break;
 		case 0x33:
 			/* INC SP */
@@ -1758,7 +1757,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x3F:
 			/* CCF */
-			state->fc = ~state->fc;
+			state->fc = !state->fc;
 			state->fn = 0;
 			state->fh = 0;
 			break;
