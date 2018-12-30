@@ -2505,9 +2505,10 @@ int execute(struct gb_state *state) {
 		case 0xE8:
 			/* ADD SP,n */
 			cycles = 16;
-			set_add8_flags(state, state->sp, op[1], 1);
+			set_add8_flags(state, state->sp & 0xFF, op[1],1);
 			state->fz = 0;
-			state->sp += op[1];
+			state->fn = 0;
+			state->sp += (int8_t)op[1];
 			state->pc++;
 			break;
 		case 0xE9:
@@ -2577,9 +2578,10 @@ int execute(struct gb_state *state) {
 			/* LD HL,SP+n */
 			/* LDHL SP,n */
 			state->pc++;
-			set_add8_flags(state, state->sp, op[1], 1);
+			set_add8_flags(state, state->sp & 0xFF, op[1],1);
 			state->fz = 0;
-			state->hl = state->sp + op[1];
+			state->fn = 0;
+			state->hl = state->sp + (int8_t)op[1];
 			cycles = 12;
 			break;
 		case 0xF9:
