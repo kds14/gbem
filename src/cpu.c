@@ -1416,6 +1416,9 @@ int execute_cb(struct gb_state *state) {
  * Returns number of clock cycles.
  */
 int execute(struct gb_state *state) {
+	if (state->pc == 0) {
+		printf("RST 00\n");
+	}
 	int pc = state->pc;
 	uint8_t *op = &state->mem[pc];
 	int cycles = 4;
@@ -2503,7 +2506,9 @@ int execute(struct gb_state *state) {
 			/* ADD SP,n */
 			cycles = 16;
 			set_add8_flags(state, state->sp, op[1], 1);
-			state->a += op[1];
+			state->fz = 0;
+			state->sp += op[1];
+			state->pc++;
 			break;
 		case 0xE9:
 			/* JP (HL) */
@@ -2889,8 +2894,8 @@ void at_exit() {
 	//printf_debug_op_count();
 	printf("PC: %04X INS: %02X\n", gbs->pc, gbs->mem[gbs->pc]);
 	fprintf_debug_info(stdout);
-	printf("MEMORY:\n");
-	print_memory(gbs);
+	//printf("MEMORY:\n");
+	//print_memory(gbs);
 }
 
 int main(int argc, char **argv) {
