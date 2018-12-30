@@ -19,14 +19,13 @@ int current_time = 0;
 uint8_t current_line = 0x0;
 int vblank = 0;
 
-void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1) {
+void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal) {
 	for (int i = 0; i < 8; i++) {
 		if (x + i < 0)
 			continue;
-		uint8_t color = (row0 >> 7) | ((row1 >> 7));
-		if (color) {
-			draw_pixel(x + i, y);
-		}
+		uint8_t color = ((row1 >> 7) << 1) | (row0 >> 7);
+		uint8_t c = (pal >> (2 * color)) & 0x3;
+		draw_pixel(x + i, y, c);
 		row0 = row0 << 1;
 		row1 = row1 << 1;
 	}
@@ -51,7 +50,11 @@ void draw_sprites(uint8_t y) {
 			uint8_t *data = get_sprite_data(sprite_attr->pattern, 0);
 			uint8_t row0 = data[line * 2];
 			uint8_t row1 = data[line * 2 + 1];
-			draw_sprite_row(x_start, y, row0, row1);
+			uint8_t pal = gb_mem[OBP0];
+			if (sprite_attr->palette) {
+				pal = gb_mem[OBP1];
+			}
+			draw_sprite_row(x_start, y, row0, row1, pal);
 		}
 	}
 }
@@ -83,7 +86,7 @@ void draw_window(uint8_t y) {
 		uint8_t *data = get_tile_data(index, 16, lcdc->bg_tile_sel);
 		uint8_t row0 = data[line * 2];
 		uint8_t row1 = data[line * 2 + 1];
-		draw_sprite_row(tile_start_x, y, row0, row1);
+		draw_sprite_row(tile_start_x, y, row0, row1, gb_mem[BGP]);
 	}
 }
 
@@ -112,7 +115,7 @@ void draw_background(uint8_t y) {
 		uint8_t *data = get_tile_data(index, 16, lcdc->bg_tile_sel);
 		uint8_t row0 = data[line * 2];
 		uint8_t row1 = data[line * 2 + 1];
-		draw_sprite_row(tile_start_x, y, row0, row1);
+		draw_sprite_row(tile_start_x, y, row0, row1, gb_mem[BGP]);
 	}
 }
 
