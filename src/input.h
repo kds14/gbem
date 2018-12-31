@@ -2,7 +2,7 @@
 #define INPUT_H
 #include <SDL.h>
 
-void handle_events();
+void on_frame_end();
 uint8_t request_input(int r);
 
 #endif

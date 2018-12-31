@@ -9,7 +9,6 @@
 int start_display(int scale_factor);
 void end_display();
 void clear_renderer();
-int wait_clear_renderer();
 void draw_pixel(int x, int y, uint8_t);
 
 void draw_sprite(uint8_t y, uint8_t x, uint8_t *data, size_t height);

@@ -129,12 +129,7 @@ void draw_scan_line(uint8_t y) {
 	draw_sprites(y);
 }
 
-int event_timer = 0;
 int gpu_tick() {
-	if (event_timer++ >= 500) {
-		handle_events();
-		event_timer = 0;
-	}
 	struct lcdc *lcdc = get_lcdc();
 	if (!lcdc->lcd_control_op) {
 		get_stat()->mode_flag = 00;
@@ -166,7 +161,7 @@ int gpu_tick() {
 	if (!(current_time % REFRESH_TIME) && current_time) {
 		// END
 		display_render();
-		wait_clear_renderer();
+		on_frame_end();
 		get_if()->vblank = 0;
 		current_time = -1;
 		current_line = 0;

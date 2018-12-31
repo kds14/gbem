@@ -9,10 +9,8 @@
 #include "debug.h"
 #include "display.h"
 #include "gpu.h"
-#include "input.h"
 
-//static const int CLOCK_SPEED = 4195304;
-static const int MAX_CYCLES_PER_FRAME = 70224;
+#define CYCLES_PER_FRAME 70224
 
 struct gb_state *gbs = NULL;
 
@@ -74,6 +72,10 @@ struct gb_state
 	uint8_t *mem;
 
 };
+
+uint16_t div_cycles;
+uint32_t timer_cycles;
+uint32_t total_cycles;
 
 void daa(struct gb_state *state) {
 	int res = state->a;
@@ -1402,6 +1404,7 @@ int execute_cb(struct gb_state *state) {
 		default:
 			fprintf(stderr, "%04X : CB %02X instruction does not exit\n", state->pc - 1, state->mem[pc]);
 			fprintf_debug_info(stdout);
+			exit(0);
 			cycles = 0;
 			break;
 	}
@@ -2607,6 +2610,7 @@ int execute(struct gb_state *state) {
 		default:
 			fprintf(stderr, "%04X : %02X does not exist\n", state->pc - 2, *op);
 			fprintf_debug_info(stdout);
+			exit(0);
 			cycles = 0;
 			break;
 	};
@@ -2646,53 +2650,52 @@ void print_memory(struct gb_state *s) {
 }
 
 void handle_interrupts(struct gb_state *state) {
-	if (!state->ime)
-		return;
-	state->prev_ime = state->ime;
 	uint8_t ie = state->mem[IE];
 	uint8_t iff = state->mem[IF];
+	if (!state->ime || !ie || !iff)
+		return;
 	uint16_t addr = 0x0000;
-	if (iff & ie & 0x01) {
+	uint8_t val = iff & ie;
+	if (val & 0x01) {
 		// V-Blank
 		addr = VBLANK_ADDR;
-	} else if (iff & ie & 0x02) {
+	} else if (val & 0x02) {
 		// LCDC
 		addr = LCDC_ADDR;
-	} else if (iff & ie & 0x04) {
+	} else if (val & 0x04) {
 		// Timer overflow
 		addr = TIMER_OVERFLOW_ADDR;
-	} else if (iff & ie & 0x08) {
+	} else if (val & 0x08) {
 		// Serial I/O transfer complete
 		addr = SERIAL_IO_TRANS_ADDR;
-	} else if (iff & ie & 0x10) {
+	} else if (val & 0x10) {
 		// Transition from High to Low of Pin number P10-P13
 		addr = P10_P13_TRANSITION_ADDR;
 	}
 
 	if (addr != 0x000) {
+		state->prev_ime = state->ime;
 		state->ime = 0;
 		push(state, state->pc);
 		state->pc = addr;
 		state->halt = 0;
-		set_mem(IF, 0);
+		state->mem[IF] = 0;
 	}
 
 }
 
-void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
-	*div_cycles += cycles;
-	*timer_cycles += cycles;
-	if (*div_cycles >= 16384) {
-		*div_cycles = 0;
+void handle_timers(struct gb_state *state, uint8_t cycles) {
+	uint8_t tac = state->mem[TAC];
+	if (tac < 0x04)
+		return;
+	div_cycles += cycles;
+	timer_cycles += cycles;
+	if (div_cycles >= 16384) {
+		div_cycles = 0;
 		state->mem[DIV] += 1;
 	}
-	if ((state->mem[TAC] & 0x04) != 0x04)
-		return;
-	uint32_t tima_freq = 2147483647;
-	switch (state->mem[TAC] & 0x03) {
-		case 0x00:
-			tima_freq = 4096;
-			break;
+	uint32_t tima_freq = 0;
+	switch (tac & 0x03) {
 		case 0x01:
 			tima_freq = 262144;
 			break;
@@ -2702,9 +2705,13 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 		case 0x11:
 			tima_freq = 16384;
 			break;
+		case 0x00:
+		default:
+			tima_freq = 4096;
+			break;
 	}
-	if (*timer_cycles >= tima_freq) {
-		*timer_cycles = 0;
+	if (timer_cycles >= tima_freq) {
+		timer_cycles = 0;
 		if (state->mem[TIMA] == 0xFF) {
 			state->mem[IF] |= 0x04;
 			state->mem[TIMA] = state->mem[TMA];
@@ -2714,49 +2721,28 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 	}
 }
 
-int tick(struct gb_state *state, int *total_cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
-	if (state->pc == 0xC7D2 && state->mem[state->pc] == 0x18) {
-		//exit(0);
-	}
+int tick(struct gb_state *state) {
 	int cycles = 4;
 	if (!state->halt) {
 		cycles = execute(state);
-		if (cycles == 0) return 1;
-		for (int i = 0; i < cycles; i++) {
-			if (++*total_cycles > MAX_CYCLES_PER_FRAME)
-			{
-				*total_cycles = 0;
-			}
-			if (gpu_tick())
-				return 1;
-		}
 	}
-	handle_timers(state, cycles, div_cycles, timer_cycles);
+	for (int i = 0; i < cycles; i++) {
+		gpu_tick();
+	}
+	handle_timers(state, cycles);
 	handle_interrupts(state);
 	return 0;
 }
 
 int run_bootstrap(struct gb_state *state) {
-	uint16_t div_cycles = 0;
-	uint32_t timer_cycles = 0;
-	int total_cycles = 0;
+	div_cycles = 0;
+	timer_cycles = 0;
 	while (state->mem[0xFF50] != 0x01)
 	{
-		if (state->mem[SCY] < 0x05 || state->mem[SCY] > 0x80) {
-			//print_registers(state);
-		}
-		if (state->mem[SCY] > 0x80) {
-			//return 1;
-		}
-		if (tick(state, &total_cycles, &div_cycles, &timer_cycles)) {
+		if (tick(state)) {
 			return 1;
 		}
 	}
-	/*
-	   clock_t diff = clock() - start;
-	   uint32_t ms = diff * 1000 / CLOCKS_PER_SEC;
-	   printf("%d frames in %d ms\n", frame_count, ms);
-	 */
 	return 0;
 }
 
@@ -2820,12 +2806,11 @@ int power_up(struct gb_state *state, int bootstrap_flag) {
 }
 
 void instruction_cycle(struct gb_state *state) {
-	uint16_t div_cycles = 0;
-	uint32_t timer_cycles = 0;
-	int total_cycles = 0;
+	div_cycles = 0;
+	timer_cycles = 0;
 	while (1)
 	{
-		if (tick(state, &total_cycles, &div_cycles, &timer_cycles)) {
+		if (tick(state)) {
 			return;
 		}
 	}

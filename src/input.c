@@ -1,4 +1,5 @@
 #include "input.h"
+#include "display.h"
 
 #define P10 0x1
 #define P11 0x2
@@ -7,6 +8,7 @@
 
 uint8_t p14 = 0xFF;
 uint8_t p15 = 0xFF;
+uint32_t frame_time = 0;
 
 uint8_t request_input(int r) {
 	return r ? p15 : p14;
@@ -49,3 +51,14 @@ void handle_events() {
 		}
 	}
 }
+
+void on_frame_end() {
+	int wait_time = 16.75L - SDL_GetTicks() + frame_time;
+	handle_events();
+	if (wait_time > 0) {
+		SDL_Delay(wait_time);
+	}
+	frame_time = SDL_GetTicks();
+	return;
+}
+
