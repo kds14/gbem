@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int start_display();
+int start_display(int scale_factor);
 void end_display();
 void clear_renderer();
 int wait_clear_renderer();

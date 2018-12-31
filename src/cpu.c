@@ -2875,6 +2875,10 @@ void start(uint8_t *bs_mem, uint8_t *cart_mem, long cart_size, int bootstrap_fla
 
 uint8_t *read_file(char *path, long *size) {
 	FILE *fp = fopen(path, "rb");
+	if (!fp) {
+		fprintf(stderr, "Failed to open file %s\n", path);
+		return NULL;
+	}
 
 	fseek(fp, 0L, SEEK_END);
 	*size = ftell(fp);
@@ -2894,12 +2898,10 @@ void at_exit() {
 }
 
 int main(int argc, char **argv) {
-	char *bootstrap_path;
-	char *cart_path;
+	char *bootstrap_path = NULL;
+	char *cart_path = NULL;
 	uint8_t bootstrap_flag = 0;
-	if (start_display()) {
-		return 1;
-	}
+	int scale_factor = 1;
 	int debug_flag = 0;
 	int debug_size = 0;
 	if (argc > 1) {
@@ -2924,6 +2926,12 @@ int main(int argc, char **argv) {
 				}
 				debug_size = atoi(argv[++i]);
 				debug_flag = 1;
+			} else if (!strcmp(argv[i],"-s") && i < argc - 1) {
+				if (i+1 >= argc) {
+					fprintf(stderr, "No argument after -s\n");
+					return 1;
+				}
+				scale_factor = atoi(argv[++i]);
 			} else {
 				fprintf(stderr, "Illegal argument: %s\n", argv[i]);
 				return 1;
@@ -2931,6 +2939,10 @@ int main(int argc, char **argv) {
 		}
 	} else {
 		fprintf(stderr, "Not enough arguments\n");
+		return 1;
+	}
+	if (!cart_path) {
+		fprintf(stderr, "No -c argument specified.\n");
 		return 1;
 	}
 
@@ -2952,6 +2964,10 @@ int main(int argc, char **argv) {
 		}
 	}
 	uint8_t *cart_mem = read_file(cart_path, &cart_size);
+
+	if (start_display(scale_factor)) {
+		return 1;
+	}
 
 	start(bs_mem, cart_mem, cart_size, bootstrap_flag);
 

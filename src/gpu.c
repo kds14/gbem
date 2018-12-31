@@ -131,7 +131,7 @@ void draw_scan_line(uint8_t y) {
 
 int event_timer = 0;
 int gpu_tick() {
-	if (event_timer++ >= 5000) {
+	if (event_timer++ >= 500) {
 		handle_events();
 		event_timer = 0;
 	}
