@@ -36,7 +36,7 @@ void draw_sprites(uint8_t y) {
 	if (!lcdc->obj_display)
 		return;
 
-	uint8_t obj_height = 16;
+	uint8_t obj_height = 8;
 	if (lcdc->obj_size)
 		obj_height *= 2;
 
@@ -142,7 +142,7 @@ int gpu_tick() {
 			get_stat()->mode_flag = 0x02;
 		// TODO: mode_flag = 11;
 		draw_scan_line(current_line++);
-		set_mem(LY, current_line);
+		gb_mem[LY] = current_line;
 		display_render();
 	} else if (!(current_time % (SCANLINE_TIME - HBLANK_TIME))) {
 		// HBLANK
@@ -164,7 +164,7 @@ int gpu_tick() {
 		get_if()->vblank = 0;
 		current_time = -1;
 		current_line = 0;
-		set_mem(LY, current_line);
+		gb_mem[LY] = current_line;
 		get_stat()->mode_flag = 0x02;
 		vblank = 0;
 	}

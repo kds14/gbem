@@ -45,9 +45,9 @@ void set_mem(uint16_t dest, uint8_t data) {
 	}
 	gb_mem[dest] = data;
 	if (dest >= INTERNAL_RAM0 && dest <= 0xDDFF) {
-		gb_mem[data + ECHO_OFFSET] = data;
+		gb_mem[dest + ECHO_OFFSET] = data;
 	} else if (dest >= ECHO_RAM && dest <= 0xFDFF) {
-		gb_mem[data - ECHO_OFFSET] = data;
+		gb_mem[dest - ECHO_OFFSET] = data;
 	}
 
 	if (dest == DMA && data <= 0xF1) {
@@ -69,7 +69,7 @@ struct interrupt_flag *get_if() {
 }
 
 struct sprite_attr *get_sprite_attr(int index) {
-	return (struct sprite_attr *)&gb_mem[OAM + index * sizeof(struct sprite_attr)];
+	return (struct sprite_attr *)&gb_mem[OAM + index * 4];
 }
 
 uint8_t *get_sprite_data(uint8_t index, int bg) {

@@ -194,10 +194,7 @@ void cpA(struct gb_state *state, uint8_t val) {
 }
 
 void pop(struct gb_state *state, uint16_t *dest) {
-	//memcpy(dest, &state->mem[state->sp], 2);
-	uint8_t *ptr = (uint8_t*)dest;
-	ptr[0] = state->mem[state->sp];
-	ptr[1] = state->mem[state->sp + 1];
+	*dest = ((uint16_t)state->mem[state->sp + 1] << 8) | state->mem[state->sp];
 	state->sp += 2;
 }
 
@@ -213,17 +210,17 @@ void jump(struct gb_state *state, uint8_t condition, uint16_t dest) {
 	}
 }
 
-void call(struct gb_state *state, uint8_t condition, uint16_t addr) {
-	if (condition) {
-		state->sp -= 2;
-		memcpy(&state->mem[state->sp], &state->pc, 2);
-		state->pc = addr;
-	}
+void push(struct gb_state *state, uint16_t val) {
+	state->mem[state->sp-1] = val >> 8;
+	state->mem[state->sp-2] = val & 0xFF;
+	state->sp -= 2;
 }
 
-void push(struct gb_state *state, uint16_t val) {
-	state->sp -= 2;
-	memcpy(&state->mem[state->sp], (uint8_t *)&val, 2);
+void call(struct gb_state *state, uint8_t condition, uint16_t addr) {
+	if (condition) {
+		push(state, state->pc);
+		state->pc = addr;
+	}
 }
 
 void rst(struct gb_state *state, uint16_t val) {
@@ -1416,8 +1413,6 @@ int execute_cb(struct gb_state *state) {
  * Returns number of clock cycles.
  */
 int execute(struct gb_state *state) {
-	if (state->pc >= 0x8000) {
-	}
 	int pc = state->pc;
 	uint8_t *op = &state->mem[pc];
 	int cycles = 4;
