@@ -47,7 +47,7 @@ void draw_sprites(uint8_t y) {
 		uint8_t y_start = sprite_attr->y - SPRITE_Y_OFFSET;
 		uint8_t x_start = sprite_attr->x - SPRITE_X_OFFSET;
 
-		if (y_start <= y && y_start + obj_height >= y) {
+		if (y_start <= y && y_start + obj_height > y) {
 			uint8_t line = y - y_start;
 			uint8_t *data = get_sprite_data(sprite_attr->pattern, 0);
 			uint8_t row0 = data[line * 2];

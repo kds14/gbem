@@ -2652,27 +2652,21 @@ void handle_interrupts(struct gb_state *state) {
 	uint8_t ie = state->mem[IE];
 	uint8_t iff = state->mem[IF];
 	uint16_t addr = 0x0000;
-	//printf("IE: %02X, IF: %02X, IME: %02X\n", ie, iff, state->ime);
 	if (iff & ie & 0x01) {
 		// V-Blank
 		addr = VBLANK_ADDR;
-		//printf("VBLANK INT\n");
 	} else if (iff & ie & 0x02) {
 		// LCDC
 		addr = LCDC_ADDR;
-		//printf("LCDC_ADDR INT\n");
 	} else if (iff & ie & 0x04) {
 		// Timer overflow
 		addr = TIMER_OVERFLOW_ADDR;
-		//printf("TIMER_OVERFLOW INT\n");
 	} else if (iff & ie & 0x08) {
 		// Serial I/O transfer complete
 		addr = SERIAL_IO_TRANS_ADDR;
-		//printf("SERIAL_IO_TRANS INT\n");
 	} else if (iff & ie & 0x10) {
 		// Transition from High to Low of Pin number P10-P13
 		addr = P10_P13_TRANSITION_ADDR;
-		//printf("P10_P13 INT\n");
 	}
 
 	if (addr != 0x000) {
@@ -2901,7 +2895,7 @@ int main(int argc, char **argv) {
 	char *bootstrap_path = NULL;
 	char *cart_path = NULL;
 	uint8_t bootstrap_flag = 0;
-	int scale_factor = 1;
+	int scale_factor = 2;
 	int debug_flag = 0;
 	int debug_size = 0;
 	if (argc > 1) {

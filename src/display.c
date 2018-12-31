@@ -56,6 +56,7 @@ uint32_t frame_time = 0;
 
 int wait_clear_renderer() {
 	int wait_time = 16.75L - SDL_GetTicks() + frame_time;
+	//printf("%d\n", wait_time);
 	if (wait_time > 0) {
 		SDL_Delay(wait_time);
 	}
