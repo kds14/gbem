@@ -8,7 +8,7 @@ SDL_Renderer *renderer = NULL;
 const int SCREEN_WIDTH = 160;
 const int SCREEN_HEIGHT = 144;
 
-Uint8 colors[4] = {232, 160, 88, 16};
+Uint8 colors[4] = {255, 160, 80, 0};
 
 int start_display() {
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
