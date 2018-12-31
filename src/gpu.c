@@ -131,11 +131,11 @@ void draw_scan_line(uint8_t y) {
 
 int event_timer = 0;
 int gpu_tick() {
-	struct lcdc *lcdc = get_lcdc();
-	if (event_timer++ >= 10) {
+	if (event_timer++ >= 5000) {
 		handle_events();
 		event_timer = 0;
 	}
+	struct lcdc *lcdc = get_lcdc();
 	if (!lcdc->lcd_control_op) {
 		get_stat()->mode_flag = 00;
 		current_time = 0;

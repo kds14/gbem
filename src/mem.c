@@ -30,12 +30,12 @@ void set_mem(uint16_t dest, uint8_t data) {
 	}
 
 	if (dest == 0xFF00) {
-		uint8_t p15 = data & 0x10;
-		uint8_t p14 = data & 0x20;
-		if (p14 || p15) {
-			int f = p14 == 0;
+		uint8_t p15 = data & 0x20;
+		uint8_t p14 = data & 0x10;
+		if (!p14 || !p15) {
+			int f = p15 == 0;
 			uint8_t res = request_input(f);
-			uint8_t r = f ? p15 | res : p14 | res;
+			uint8_t r = f ? (data & 0xF0) | res : (data & 0xF0) | res;
 			gb_mem[0xFF00] = r;
 			return;
 		}

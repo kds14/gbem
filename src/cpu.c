@@ -9,6 +9,7 @@
 #include "debug.h"
 #include "display.h"
 #include "gpu.h"
+#include "input.h"
 
 //static const int CLOCK_SPEED = 4195304;
 static const int MAX_CYCLES_PER_FRAME = 70224;
@@ -2720,7 +2721,6 @@ void handle_timers(struct gb_state *state, uint8_t cycles, uint16_t *div_cycles,
 }
 
 int tick(struct gb_state *state, int *total_cycles, uint16_t *div_cycles, uint32_t *timer_cycles) {
-	//printf("%04X: %02X ", state->pc, state->mem[state->pc]);
 	if (state->pc == 0xC7D2 && state->mem[state->pc] == 0x18) {
 		//exit(0);
 	}

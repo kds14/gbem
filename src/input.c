@@ -5,8 +5,8 @@
 #define P12 0x4
 #define P13 0x8
 
-uint8_t p14 = 0;
-uint8_t p15 = 0;
+uint8_t p14 = 0xFF;
+uint8_t p15 = 0xFF;
 
 uint8_t request_input(int r) {
 	return r ? p15 : p14;
@@ -18,32 +18,32 @@ void handle_events() {
 		if (e.type == SDL_QUIT) {
 			exit(0);
 		} else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
-			int ks = e.type == SDL_KEYDOWN;
+			int ks = e.type == SDL_KEYUP;
 			switch (e.key.keysym.sym) {
 				case SDLK_RIGHT:
-					p14 = ks ? p14 | P10 : p14 & 0x0E;
+					p14 = ks ? p14 | P10 : p14 & 0xFE;
 					break;
 				case SDLK_LEFT:
-					p14 = ks ? p14 | P11 : p14 & 0x0D;
+					p14 = ks ? p14 | P11 : p14 & 0xFD;
 					break;
 				case SDLK_UP:
-					p14 = ks ? p14 | P12 : p14 & 0x0B;
+					p14 = ks ? p14 | P12 : p14 & 0xFB;
 					break;
 				case SDLK_DOWN:
-					p14 = ks ? p14 | P13 : p14 & 0x07;
+					p14 = ks ? p14 | P13 : p14 & 0xF7;
 					break;
 				case SDLK_z:
-					p15 = ks ? p15 | P10 : p15 & 0x0E;
+					p15 = ks ? p15 | P10 : p15 & 0xFE;
 					break;
 				case SDLK_x:
-					p15 = ks ? p15 | P11 : p15 & 0x0D;
+					p15 = ks ? p15 | P11 : p15 & 0xFD;
 					break;
 				case SDLK_RSHIFT:
 				case SDLK_LSHIFT:
-					p15 = ks ? p15 | P12 : p15 & 0x0B;
+					p15 = ks ? p15 | P12 : p15 & 0xFB;
 					break;
 				case SDLK_RETURN:
-					p15 = ks ? p15 | P13 : p15 & 0x07;
+					p15 = ks ? p15 | P13 : p15 & 0xF7;
 					break;
 			}
 		}
