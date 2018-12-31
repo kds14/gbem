@@ -1,6 +1,7 @@
 #include "mem.h"
 #include "gpu.h"
 #include "display.h"
+#include "input.h"
 
 static const int PIXEL_TIME = 1;
 //static const int HDRAW_TIME = 240;
@@ -160,8 +161,9 @@ int gpu_tick() {
 	int status = 0;
 	if (!(current_time % REFRESH_TIME) && current_time) {
 		// END
+		handle_events();
 		display_render();
-		status = wait_clear_renderer();
+		wait_clear_renderer();
 		get_if()->vblank = 0;
 		current_time = -1;
 		current_line = 0;

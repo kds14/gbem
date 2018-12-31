@@ -1,5 +1,6 @@
 #include "mem.h"
 #include "display.h"
+#include "input.h"
 #include <stdio.h>
 
 static const size_t DMA_SIZE = 0xA0;
@@ -26,6 +27,18 @@ void set_mem(uint16_t dest, uint8_t data) {
 	}
 	if (dest >= 0x9800 && dest <= 0x9BFF && data != 0x20) {
 		//printf("%04X : %02X\n", dest, data);
+	}
+
+	if (dest == 0xFF00) {
+		uint8_t p15 = data & 0x10;
+		uint8_t p14 = data & 0x20;
+		if (p14 || p15) {
+			int f = p14 == 0;
+			uint8_t res = request_input(f);
+			uint8_t r = f ? p15 | res : p14 | res;
+			gb_mem[0xFF00] = r;
+			return;
+		}
 	}
 
 	// Setting 7th bit in LCDC sets LY = 0
