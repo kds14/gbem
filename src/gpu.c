@@ -5,10 +5,10 @@
 
 static const int PIXEL_TIME = 1;
 //static const int HDRAW_TIME = 240;
-static const int HBLANK_TIME = 68;
-static const int SCANLINE_TIME = 308;
-static const int VDRAW_TIME = 49280;
-//static const int VBLANK_TIME = 20944;
+static const int HBLANK_TIME = 200;
+static const int SCANLINE_TIME = 458;
+static const int VDRAW_TIME = 65952;
+//static const int VBLANK_TIME = 4580;
 static const int REFRESH_TIME = 70224;
 
 static const int OAM_COUNT = 40;
@@ -129,8 +129,13 @@ void draw_scan_line(uint8_t y) {
 	draw_sprites(y);
 }
 
+int event_timer = 0;
 int gpu_tick() {
 	struct lcdc *lcdc = get_lcdc();
+	if (event_timer++ >= 10) {
+		handle_events();
+		event_timer = 0;
+	}
 	if (!lcdc->lcd_control_op) {
 		get_stat()->mode_flag = 00;
 		current_time = 0;
@@ -145,7 +150,6 @@ int gpu_tick() {
 		// TODO: mode_flag = 11;
 		draw_scan_line(current_line++);
 		gb_mem[LY] = current_line;
-		display_render();
 	} else if (!(current_time % (SCANLINE_TIME - HBLANK_TIME))) {
 		// HBLANK
 		if (!vblank)
@@ -161,7 +165,6 @@ int gpu_tick() {
 	int status = 0;
 	if (!(current_time % REFRESH_TIME) && current_time) {
 		// END
-		handle_events();
 		display_render();
 		wait_clear_renderer();
 		get_if()->vblank = 0;

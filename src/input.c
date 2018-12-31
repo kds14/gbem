@@ -48,5 +48,4 @@ void handle_events() {
 			}
 		}
 	}
-	printf("%02X %02X\n", p14, p15);
 }

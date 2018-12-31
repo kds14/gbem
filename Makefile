@@ -1,7 +1,7 @@
 TARGET=./build/cpu
 SOURCES=./src/*.c
 CC=gcc
-FLAGS=-g -Wall -Werror
+FLAGS= -Wall -Werror
 LIBPATH=./sdl2/lib
 INC=./sdl2/include
 
