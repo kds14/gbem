@@ -77,12 +77,11 @@ void draw_window(uint8_t y) {
 	uint8_t wx = gb_mem[WX];
 	printf("%d %d\n", wy, wx);
 
-	uint8_t x_start = wx / 8;
-	uint8_t y_start = (y + wy) / 8;
-	uint8_t line = (wy + y) % 8;
+	uint8_t y_start = (y - wy) / 8;
+	uint8_t line = (y - wy) % 8;
 	for (int i = 0; i < 20; i++) {
-		uint8_t tile = i + x_start;
-		uint8_t tile_start_x = i * 8;
+		uint8_t tile = i * 8;
+		uint8_t tile_start_x = tile + wx - 7;
 		uint16_t tile_addr = tile_map_addr + tile + y_start * 32;
 		uint8_t index = gb_mem[tile_addr];
 		uint8_t *data = get_tile_data(index, 16, lcdc->bg_tile_sel);
@@ -107,7 +106,7 @@ void draw_background(uint8_t y) {
 	uint8_t scx = gb_mem[SCX];
 
 	uint8_t x_start = scx / 8;
-	uint8_t y_start = (y + scy) / 8;
+	uint8_t y_start = (uint8_t)(y + scy) / 8;
 	uint8_t line = (scy + y) % 8;
 	for (int i = 0; i < 20; i++) {
 		uint8_t tile = i + x_start;
