@@ -2671,14 +2671,14 @@ void handle_interrupts(struct gb_state *state) {
 
 void handle_timers(struct gb_state *state, uint8_t cycles) {
 	uint8_t tac = state->mem[TAC];
-	if (tac < 0x04)
-		return;
 	div_cycles += cycles;
-	timer_cycles += cycles;
 	if (div_cycles >= 16384) {
 		div_cycles = 0;
 		state->mem[DIV] += 1;
 	}
+	if ((tac & 0x04) != 0x04)
+		return;
+	timer_cycles += cycles;
 	uint32_t tima_freq = 0;
 	switch (tac & 0x03) {
 		case 0x01:
