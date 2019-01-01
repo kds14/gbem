@@ -1,9 +1,7 @@
-TARGET=./build/cpu
+TARGET=./build/gbem
 SOURCES=./src/*.c
 CC=gcc
 FLAGS=-g -Wall -Werror
-LIBPATH=./sdl2/lib
-INC=./sdl2/include
 
 all: $(TARGET)
 
