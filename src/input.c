@@ -1,4 +1,5 @@
 #include "input.h"
+#include "mem.h"
 #include "display.h"
 
 #define P10 0x1
@@ -21,6 +22,8 @@ void handle_events() {
 			exit(0);
 		} else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
 			int ks = e.type == SDL_KEYUP;
+			if (!ks)
+				gb_mem[IF] |= 0x10;
 			switch (e.key.keysym.sym) {
 				case SDLK_RIGHT:
 					p14 = ks ? p14 | P10 : p14 & 0xFE;
