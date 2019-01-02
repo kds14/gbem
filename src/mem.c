@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h>
 
 #include "mem.h"
 #include "display.h"
@@ -6,22 +7,68 @@
 
 static const size_t DMA_SIZE = 0xA0;
 
+/*
+ * Memory banking variables 
+ */
+enum mbc1_mod {_16_8, _4_32};
+struct mb_data {
+	uint8_t cart_type;
+	uint8_t rom_idx;
+	enum mbc1_mod mode;
+	int count;
+	uint8_t **rom_banks;
+};
+
+struct mb_data mbd;
+
+void sel_mode(uint8_t mode) {
+	//printf("SEL MODE %02X\n", mode);
+	mbd.mode = mode;
+}
+
+void sel_bank(uint8_t bank) {
+	//printf("SEL BANK %02X\n", bank);
+	mbd.rom_idx = bank;
+}
+
+uint8_t *get_mem_ptr(uint16_t addr) {
+	if (mbd.cart_type != 0 && addr >= 0x4000 && addr < 0x8000) {
+		uint16_t offset = addr - 0x4000;
+		return &(mbd.rom_banks[mbd.rom_idx][offset]);
+	}
+	return &gb_mem[addr];
+}
+
+uint8_t get_mem(uint16_t addr) {
+	if (mbd.cart_type != 0 && addr >= 0x4000 && addr < 0x8000) {
+		uint16_t offset = addr - 0x4000;
+		return mbd.rom_banks[mbd.rom_idx][offset];
+	}
+	return gb_mem[addr];
+}
+
 void dma(uint8_t addr) {
 	uint8_t *dest = &gb_mem[OAM];
 	uint16_t src_addr = addr << 8;
-	uint8_t *src = &gb_mem[src_addr];
+	uint8_t *src = get_mem_ptr(src_addr);
 	memcpy(dest, src, DMA_SIZE);
 }
 
 void set_mem(uint16_t dest, uint8_t data) {
 	// cannot write to ROM
 	if (dest < 0x8000) {
+		if (mbd.cart_type != 0x0) {
+			if (dest >= 0x6000 && dest < 0x8000)
+				sel_mode(data & 0x1);
+			else if (dest >= 0x2000 && dest < 0x4000)
+				sel_bank(data & 0xFF);
+		}
 		return;
 	}
-
-	if (dest >= 0x8000 && dest <= 0x9FFF && get_stat()->mode_flag == 0x03)
+	struct stat *stat = get_stat();
+	if (dest >= 0x8000 && dest <= 0x9FFF && stat->mode_flag == 0x03)
 		return;
-	if (dest >= 0xFE00 && dest <= 0xFE9F && get_stat()->mode_flag > 0x01)
+	if (dest >= 0xFE00 && dest <= 0xFE9F && stat->mode_flag > 0x01)
 		return;
 
 	if (dest == 0xFF00) {
@@ -56,6 +103,28 @@ void set_mem(uint16_t dest, uint8_t data) {
 		dma(data);
 	}
 	// TODO: look at specifics of some special registers
+}
+
+void setup_mem_banks(uint8_t *cart_mem) {
+	mbd.cart_type = cart_mem[0x0147];
+	int rom_bank_count = 2;
+	if (mbd.cart_type == 0)
+		return;
+	uint8_t rom_size = cart_mem[0x0148];
+	//uint8_t ram_size = cart_mem[0x0149];
+	if (mbd.cart_type == 0x01) {
+		if (rom_size <= 6)
+			rom_bank_count = 0x1 << (rom_size + 1);
+	}
+	mbd.rom_banks = calloc(rom_bank_count, sizeof(uint8_t*));
+	int i;
+	uint32_t rom_ptr;
+	mbd.rom_banks[0] = &cart_mem[0x4000];
+	for (i = 1; i < rom_bank_count; ++i) {
+		rom_ptr = 0x4000 * i;
+		mbd.rom_banks[i] = &cart_mem[rom_ptr];
+	}
+	mbd.count = rom_bank_count;
 }
 
 struct lcdc *get_lcdc() {

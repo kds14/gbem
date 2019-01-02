@@ -75,7 +75,7 @@ void draw_window(uint8_t y) {
 	//TODO: WX AND WY regs
 	uint8_t wy = gb_mem[WY];
 	uint8_t wx = gb_mem[WX];
-	printf("%d %d\n", wy, wx);
+	//printf("%d %d\n", wy, wx);
 
 	uint8_t y_start = (y - wy) / 8;
 	uint8_t line = (y - wy) % 8;
@@ -124,7 +124,7 @@ void draw_scan_line(uint8_t y) {
 	if (y >= SCREEN_HEIGHT)
 		return;
 	draw_background(y);
-	draw_window(y);
+	//draw_window(y);
 	draw_sprites(y);
 }
 

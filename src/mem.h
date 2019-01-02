@@ -143,9 +143,14 @@ uint8_t *get_tile_data(uint8_t index, int size, int obj_tiles);
 uint8_t *gb_mem;
 
 /* 
- * All memory writing must go through set_mem because
+ * All CPU based memory writing must go through set_mem because
  * there are special rules for some areas of memory
  */
 void set_mem(uint16_t dest, uint8_t data);
+
+uint8_t get_mem(uint16_t addr);
+uint8_t *get_mem_ptr(uint16_t addr);
+
+void setup_mem_banks(uint8_t* cart_mem);
 
 #endif

@@ -5,6 +5,7 @@
 #include "display.h"
 #include "debug.h"
 #include "cpu.h"
+#include "mem.h"
 
 uint8_t *read_file(char *path, long *size) {
 	FILE *fp = fopen(path, "rb");
@@ -97,8 +98,8 @@ int main(int argc, char **argv) {
 	if (start_display(scale_factor)) {
 		return 1;
 	}
-
-	start(bs_mem, cart_mem, cart_size, bootstrap_flag);
+	setup_mem_banks(cart_mem);
+	start(bs_mem, cart_mem, bootstrap_flag);
 
 	end_display();
 	return 0;
