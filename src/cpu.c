@@ -62,9 +62,8 @@ struct gb_state
 	uint16_t sp;
 	uint16_t pc;
 	uint16_t ime;
-	uint16_t prev_ime;
 	uint8_t halt;
-	uint8_t di;
+	uint8_t di_flag;
 	uint8_t ei_flag;
 	uint8_t *mem;
 
@@ -1480,8 +1479,8 @@ int execute(struct gb_state *state) {
 	op[0] = get_mem(state->pc);
 	op[1] = get_mem(state->pc + 1);
 	op[2] = get_mem(state->pc + 2);
+	state->pc++;
 	int cycles = 4;
-	int pc_start = state->pc++;
 	uint16_t nn = ((uint16_t)op[2] << 8) | op[1];
 	uint8_t tmp;
 	switch (*op) {
@@ -1539,7 +1538,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x0A:
 			/* LD A,(BC) */
-			state->a = state->mem[state->bc];
+			state->a = get_mem(state->bc);
 			cycles = 8;
 			break;
 		case 0x0B:
@@ -1616,7 +1615,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x1A:
 			/* LD A,(DE) */
-			state->a = state->mem[state->de];
+			state->a = get_mem(state->de);
 			cycles = 8;
 			break;
 		case 0x1B:
@@ -2603,7 +2602,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0xF3:
 			/* DI */
-			state->di = 1;
+			state->di_flag = 1;
 			break;
 		case 0xF5:
 			/* PUSH AF */
@@ -2664,8 +2663,8 @@ int execute(struct gb_state *state) {
 			cycles = 0;
 			break;
 	};
-	if (state->di && op[0] != 0xF3) {
-		state->di = 0;
+	if (state->di_flag && op[0] != 0xF3) {
+		state->di_flag = 0;
 		state->ime = 0;
 	}
 	if (state->ei_flag && op[0] != 0xFB) {
@@ -2673,7 +2672,7 @@ int execute(struct gb_state *state) {
 		state->ei_flag = 0;
 	}
 
-	handle_debug(pc_start, state->pc, op, cycles, 0);
+	handle_debug(pc, state->pc, op, cycles, 0);
 	return cycles;
 }
 

@@ -88,7 +88,7 @@ void set_mem(uint16_t dest, uint8_t data) {
 		uint8_t bit7 = data >> 7;
 		uint8_t old_bit7 = gb_mem[LCDC] >> 7;
 		if (bit7 != old_bit7) {
-			gb_mem[LY] = 0;
+			set_ly(0);
 		}
 	}
 

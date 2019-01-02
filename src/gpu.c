@@ -159,7 +159,6 @@ int gpu_tick() {
 		// END
 		display_render();
 		on_frame_end();
-		get_if()->vblank = 0;
 		current_time = -1;
 		current_line = 0;
 		set_ly(current_line);
