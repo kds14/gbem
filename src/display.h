@@ -13,5 +13,7 @@ void draw_pixel(int x, int y, uint8_t);
 
 void draw_sprite(uint8_t y, uint8_t x, uint8_t *data, size_t height);
 void display_render();
+void finish_row();
+void ready_render();
 
 #endif

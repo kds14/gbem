@@ -124,7 +124,7 @@ void draw_background(uint8_t y) {
 	uint8_t x_start = scx / 8;
 	uint8_t y_start = (uint8_t)(y + scy) / 8;
 	uint8_t line = (scy + y) % 8;
-	for (int i = 0; i < 20; i++) {
+	for (int i = 0; i < 32; i++) {
 		uint8_t tile = i + x_start;
 		uint8_t tile_start_x = i * 8;
 		uint16_t tile_addr = tile_map_addr + tile + y_start * 32;
@@ -170,6 +170,7 @@ int gpu_tick() {
 		get_if()->vblank = 1;
 		set_stat_mode(0x01);
 		vblank = 1;
+		ready_render();
 	}
 	if (!(current_time % REFRESH_TIME) && current_time) {
 		// END

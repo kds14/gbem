@@ -318,7 +318,7 @@ int execute_cb(struct gb_state *state) {
 	uint16_t pc = state->pc;
 	uint8_t *op = get_mem_ptr(state->pc);
 	int cycles = 8;
-	int pc_start = state->pc++;
+	state->pc++;
 	uint8_t tmp;
 
 	switch (*op) {
@@ -1465,7 +1465,7 @@ int execute_cb(struct gb_state *state) {
 			cycles = 0;
 			break;
 	}
-	handle_debug(pc_start, state->pc, op, cycles, 1);
+	//handle_debug(pc_start, state->pc, op, cycles, 1);
 	return cycles;
 }
 
@@ -2672,7 +2672,7 @@ int execute(struct gb_state *state) {
 		state->ei_flag = 0;
 	}
 
-	handle_debug(pc, state->pc, op, cycles, 0);
+	//handle_debug(pc, state->pc, op, cycles, 0);
 	return cycles;
 }
 
