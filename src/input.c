@@ -22,33 +22,47 @@ void handle_events() {
 			exit(0);
 		} else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
 			int ks = e.type == SDL_KEYUP;
-			if (!ks)
-				gb_mem[IF] |= 0x10;
 			switch (e.key.keysym.sym) {
 				case SDLK_RIGHT:
 					p14 = ks ? p14 | P10 : p14 & 0xFE;
+					if (!ks)
+						gb_mem[IF] |= 0x10;
 					break;
 				case SDLK_LEFT:
 					p14 = ks ? p14 | P11 : p14 & 0xFD;
+					if (!ks)
+						gb_mem[IF] |= 0x10;
 					break;
 				case SDLK_UP:
 					p14 = ks ? p14 | P12 : p14 & 0xFB;
+					if (!ks)
+						gb_mem[IF] |= 0x10;
 					break;
 				case SDLK_DOWN:
 					p14 = ks ? p14 | P13 : p14 & 0xF7;
+					if (!ks)
+						gb_mem[IF] |= 0x10;
 					break;
 				case SDLK_z:
 					p15 = ks ? p15 | P10 : p15 & 0xFE;
+					if (!ks)
+						gb_mem[IF] |= 0x10;
 					break;
 				case SDLK_x:
 					p15 = ks ? p15 | P11 : p15 & 0xFD;
+					if (!ks)
+						gb_mem[IF] |= 0x10;
 					break;
 				case SDLK_RSHIFT:
 				case SDLK_LSHIFT:
 					p15 = ks ? p15 | P12 : p15 & 0xFB;
+					if (!ks)
+						gb_mem[IF] |= 0x10;
 					break;
 				case SDLK_RETURN:
 					p15 = ks ? p15 | P13 : p15 & 0xF7;
+					if (!ks)
+						gb_mem[IF] |= 0x10;
 					break;
 			}
 		}

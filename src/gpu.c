@@ -28,19 +28,16 @@ void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int 
 		if (xflip) {
 			color = ((row1 << 1) & 0x02) | (row0 & 0x1);
 			c = (pal >> (2 * color)) & 0x3;
-		} else {
-			color = ((row1 >> 7) << 1) | (row0 >> 7);
-			c = (pal >> (2 * color)) & 0x3;
-		}
-		if (!sprite || color != 0)
-			draw_pixel(x + i, y, c);
-		if (xflip) {
 			row0 = row0 >> 1;
 			row1 = row1 >> 1;
 		} else {
+			color = ((row1 >> 7) << 1) | (row0 >> 7);
+			c = (pal >> (2 * color)) & 0x3;
 			row0 = row0 << 1;
 			row1 = row1 << 1;
 		}
+		if (!sprite || color != 0)
+			draw_pixel(x + i, y, c);
 	}
 }
 
@@ -66,7 +63,7 @@ void draw_sprites(uint8_t y) {
 			uint8_t line = y - y_start;
 			uint8_t *data = get_sprite_data(sprite_attr->pattern, 0);
 			if (sprite_attr->yflip)
-				line = 15 - line;
+				line = 7 - line;
 			uint8_t row0 = data[line * 2];
 			uint8_t row1 = data[line * 2 + 1];
 			uint8_t pal = gb_mem[OBP0];
