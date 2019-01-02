@@ -321,6 +321,7 @@ int execute_cb(struct gb_state *state) {
 	int cycles = 8;
 	int pc_start = state->pc++;
 	uint8_t tmp;
+
 	switch (*op) {
 		case 0x00:
 			/* RLC B */
@@ -2664,14 +2665,15 @@ int execute(struct gb_state *state) {
 			cycles = 0;
 			break;
 	};
-	if (state->di) {
+	if (state->di && op[0] != 0xF3) {
 		state->di = 0;
 		state->ime = 0;
 	}
-	if (state->ei_flag) {
+	if (state->ei_flag && op[0] != 0xFB) {
 		state->ime = 1;
 		state->ei_flag = 0;
 	}
+
 	handle_debug(pc_start, state->pc, op, cycles, 0);
 	return cycles;
 }
@@ -2714,37 +2716,36 @@ void handle_interrupts(struct gb_state *state) {
 void handle_timers(struct gb_state *state, uint8_t cycles) {
 	uint8_t tac = state->mem[TAC];
 	div_cycles += cycles;
-	if (div_cycles >= 16384) {
+	if (div_cycles >= 256) {
 		div_cycles = 0;
 		state->mem[DIV] += 1;
 	}
 	if ((tac & 0x04) != 0x04)
 		return;
 	timer_cycles += cycles;
-	uint32_t tima_freq = 0;
+	uint32_t tima_freq;
 	switch (tac & 0x03) {
 		case 0x01:
-			tima_freq = 262144;
+			tima_freq = 16;
 			break;
 		case 0x10:
-			tima_freq = 65536;
+			tima_freq = 64;
 			break;
 		case 0x11:
-			tima_freq = 16384;
+			tima_freq = 256;
 			break;
 		case 0x00:
 		default:
-			tima_freq = 4096;
+			tima_freq = 1024;
 			break;
 	}
 	if (timer_cycles >= tima_freq) {
 		timer_cycles = 0;
 		if (state->mem[TIMA] == 0xFF) {
 			state->mem[IF] |= 0x04;
-			state->mem[TIMA] = state->mem[TMA];
-		} else {
-			state->mem[TIMA] += 1;
+			//state->mem[TIMA] = state->mem[TMA];
 		}
+		state->mem[TIMA] += 1;
 	}
 }
 
