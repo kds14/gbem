@@ -141,7 +141,6 @@ int gpu_tick() {
 		// HDRAW
 		if (!vblank)
 			set_stat_mode(0x02);
-		// TODO: mode_flag = 11;
 		draw_scan_line(current_line++);
 		set_ly(current_line);
 	} else if (!(current_time % (SCANLINE_TIME - HBLANK_TIME))) {

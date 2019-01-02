@@ -174,7 +174,8 @@ void set_stat_mode(uint8_t mode) {
 }
 
 void set_ly(uint8_t val) {
-	if (gb_mem[LY] == gb_mem[LYC]) {
+	gb_mem[LY] = val;
+	if (val == gb_mem[LYC]) {
 		gb_mem[STAT] |= 0x4;
 		if (gb_mem[STAT] & 0x40) {
 			gb_mem[IF] |= 0x2;
