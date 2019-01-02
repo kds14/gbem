@@ -2048,9 +2048,8 @@ int execute(struct gb_state *state) {
 		case 0x76:
 			/* HALT */
 			state->halt = 1;
-			// TODO: figure out if supposed to enable IME
-			state->ime = 1;
-			state->ime = 1;
+			if (!state->ime)
+				pc++;
 			break;
 		case 0x77:
 			/* LD (HL),A */
@@ -2491,7 +2490,7 @@ int execute(struct gb_state *state) {
 		case 0xD9:
 			/* RETI */
 			ret(state, 1);
-			state->ime = state->prev_ime;
+			state->ime = 1;
 			cycles = 8;
 			break;
 		case 0xDA:
@@ -2681,8 +2680,6 @@ int execute(struct gb_state *state) {
 void handle_interrupts(struct gb_state *state) {
 	uint8_t ie = state->mem[IE];
 	uint8_t iff = state->mem[IF];
-	if (!state->ime || !ie || !iff)
-		return;
 	uint16_t addr = 0x0000;
 	uint8_t val = iff & ie;
 	if (val & 0x01) {
@@ -2703,12 +2700,13 @@ void handle_interrupts(struct gb_state *state) {
 	}
 
 	if (addr != 0x000) {
-		state->prev_ime = state->ime;
-		state->ime = 0;
-		push(state, state->pc);
-		state->pc = addr;
+		if (state->ime) {
+			push(state, state->pc);
+			state->pc = addr;
+			state->mem[IF] = 0;
+			state->ime = 0;
+		}
 		state->halt = 0;
-		state->mem[IF] = 0;
 	}
 
 }
@@ -2723,23 +2721,23 @@ void handle_timers(struct gb_state *state, uint8_t cycles) {
 	if ((tac & 0x04) != 0x04)
 		return;
 	timer_cycles += cycles;
-	uint32_t tima_freq;
+	uint32_t time_rate;
 	switch (tac & 0x03) {
 		case 0x01:
-			tima_freq = 16;
+			time_rate = 16;
 			break;
 		case 0x10:
-			tima_freq = 64;
+			time_rate = 64;
 			break;
 		case 0x11:
-			tima_freq = 256;
+			time_rate = 256;
 			break;
 		case 0x00:
 		default:
-			tima_freq = 1024;
+			time_rate = 1024;
 			break;
 	}
-	if (timer_cycles >= tima_freq) {
+	if (timer_cycles >= time_rate) {
 		timer_cycles = 0;
 		if (state->mem[TIMA] == 0xFF) {
 			state->mem[IF] |= 0x04;
