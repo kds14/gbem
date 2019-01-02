@@ -9,6 +9,7 @@
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
+SDL_Texture *texture = NULL;
 
 const int SCREEN_WIDTH = 160;
 const int SCREEN_HEIGHT = 144;
@@ -30,6 +31,7 @@ int start_display(int scale_factor) {
 			SDL_SetWindowTitle(window, WINDOW_TITLE);
 			SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 			SDL_RenderClear(renderer);
+			texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT); 
 			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 			SDL_RenderPresent(renderer);
 		}
@@ -44,6 +46,7 @@ void draw_pixel(int x, int y, uint8_t color) {
 }
 
 void display_render() {
+	//SDL_RenderCopy(renderer, texture, NULL, NULL);
 	SDL_RenderPresent(renderer);
 }
 

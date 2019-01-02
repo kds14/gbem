@@ -89,13 +89,15 @@ void draw_window(uint8_t y) {
 	//TODO: WX AND WY regs
 	uint8_t wy = gb_mem[WY];
 	uint8_t wx = gb_mem[WX];
-	//printf("%d %d\n", wy, wx);
-
-	uint8_t y_start = (y - wy) / 8;
-	uint8_t line = (y - wy) % 8;
-	for (int i = 0; i < 20; i++) {
+	if (y < wy)
+		return;
+	for (int i = 0; i < 32; i++) {
 		uint8_t tile = i * 8;
 		uint8_t tile_start_x = tile + wx - 7;
+		if (tile_start_x < wx || tile_start_x > SCREEN_WIDTH)
+			continue;
+		uint8_t y_start = (y - wy) / 8;
+		uint8_t line = (y - wy) % 8;
 		uint16_t tile_addr = tile_map_addr + tile + y_start * 32;
 		uint8_t index = gb_mem[tile_addr];
 		uint8_t *data = get_tile_data(index, 16, lcdc->bg_tile_sel);
@@ -138,7 +140,7 @@ void draw_scan_line(uint8_t y) {
 	if (y >= SCREEN_HEIGHT)
 		return;
 	draw_background(y);
-	//draw_window(y);
+	draw_window(y);
 	draw_sprites(y);
 }
 
