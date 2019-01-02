@@ -41,9 +41,6 @@ void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int 
 	}
 }
 
-void y_flip_line(uint8_t line, uint8_t *data) {
-}
-
 void draw_sprites(uint8_t y) {
 	struct lcdc *lcdc = get_lcdc();
 	if (!lcdc->obj_display)
@@ -92,9 +89,9 @@ void draw_window(uint8_t y) {
 	if (y < wy)
 		return;
 	for (int i = 0; i < 32; i++) {
-		uint8_t tile = i * 8;
-		uint8_t tile_start_x = tile + wx - 7;
-		if (tile_start_x < wx || tile_start_x > SCREEN_WIDTH)
+		uint8_t tile = i;
+		uint8_t tile_start_x = tile * 8 + wx - 7;
+		if (tile_start_x < wx - 8 || tile_start_x > SCREEN_WIDTH)
 			continue;
 		uint8_t y_start = (y - wy) / 8;
 		uint8_t line = (y - wy) % 8;
