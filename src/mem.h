@@ -129,16 +129,15 @@ struct interrupt_flag
 };
 
 struct sprite_attr *get_sprite_attr(int index);
-
 struct lcdc *get_lcdc();
-
 struct stat *get_stat();
-
 struct interrupt_flag *get_if();
 
 uint8_t *get_sprite_data(uint8_t index, int bg);
-
 uint8_t *get_tile_data(uint8_t index, int size, int obj_tiles);
+
+void set_ly(uint8_t val);
+void set_stat_mode(uint8_t mode);
 
 uint8_t *gb_mem;
 

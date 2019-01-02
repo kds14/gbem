@@ -158,3 +158,28 @@ uint8_t *get_tile_data(uint8_t index, int size, int bg_tile_sel) {
 		return &gb_mem[BG_TILES + 0x800 + (int8_t)index * size];
 	}
 }
+
+void set_stat_mode(uint8_t mode) {
+	int change = (gb_mem[STAT] & 0x03) == mode;
+	if (!change)
+		return;
+	gb_mem[STAT] = (gb_mem[STAT] & 0xFC) | mode;
+	if (gb_mem[STAT] & 0x8 && mode == 0) {
+		gb_mem[IF] |= 0x2;
+	} else if (gb_mem[STAT] & 0x10 && mode == 0x01) {
+		gb_mem[IF] |= 0x2;
+	} else if (gb_mem[STAT] & 0x20 && mode == 0x10) {
+		gb_mem[IF] |= 0x2;
+	}
+}
+
+void set_ly(uint8_t val) {
+	if (gb_mem[LY] == gb_mem[LYC]) {
+		gb_mem[STAT] |= 0x4;
+		if (gb_mem[STAT] & 0x40) {
+			gb_mem[IF] |= 0x2;
+		}
+	} else {
+		gb_mem[STAT] &= 0xFB;
+	}
+}
