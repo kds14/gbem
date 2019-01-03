@@ -3,6 +3,9 @@
 #include "display.h"
 #include "input.h"
 
+#define SPRITE_X_OFFSET 8
+#define SPRITE_Y_OFFSET 16
+
 static const int PIXEL_TIME = 1;
 //static const int HDRAW_TIME = 240;
 static const int HBLANK_TIME = 200;
@@ -13,8 +16,6 @@ static const int REFRESH_TIME = 70224;
 
 static const int OAM_COUNT = 40;
 //static const int BG_TILE_COUNT = 32;
-static const int SPRITE_X_OFFSET = 8;
-static const int SPRITE_Y_OFFSET = 16;
 
 int current_time = 0;
 uint8_t current_line = 0x0;
@@ -23,14 +24,12 @@ int vblank = 0;
 void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int sprite, int xflip, int pstart) {
 	uint8_t color, c;
 	int i;
-	for (i = 0; i < pstart; ++i) {
-		if (xflip) {
-			row0 = row0 >> 1;
-			row1 = row1 >> 1;
-		} else {
-			row0 = row0 << 1;
-			row1 = row1 << 1;
-		}
+	if (xflip) {
+		row0 = row0 >> pstart;
+		row1 = row1 >> pstart;
+	} else {
+		row0 = row0 << pstart;
+		row1 = row1 << pstart;
 	}
 	for (i = 0; i < 8 - pstart; i++) {
 		if (xflip) {
@@ -61,7 +60,7 @@ void draw_sprites(uint8_t y) {
 	for (int i = 0; i < OAM_COUNT; i++) {
 		struct sprite_attr *sprite_attr = get_sprite_attr(i);
 		uint8_t y_start = sprite_attr->y - SPRITE_Y_OFFSET;
-		uint8_t x_start = sprite_attr->x - SPRITE_X_OFFSET;
+		int x_start = sprite_attr->x - 8;
 		// TODO: flipping when height is 16 bits
 
 		if (y_start <= y && y_start + obj_height > y) {
