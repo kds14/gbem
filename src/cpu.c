@@ -320,7 +320,6 @@ int execute_cb(struct gb_state *state) {
 	int cycles = 8;
 	state->pc++;
 	uint8_t tmp;
-
 	switch (*op) {
 		case 0x00:
 			/* RLC B */
@@ -1465,7 +1464,7 @@ int execute_cb(struct gb_state *state) {
 			cycles = 0;
 			break;
 	}
-	//handle_debug(pc_start, state->pc, op, cycles, 1);
+	handle_debug(pc, state->pc, op, cycles, 1);
 	return cycles;
 }
 
@@ -2672,7 +2671,7 @@ int execute(struct gb_state *state) {
 		state->ei_flag = 0;
 	}
 
-	//handle_debug(pc, state->pc, op, cycles, 0);
+	handle_debug(pc, state->pc, op, cycles, 0);
 	return cycles;
 }
 
@@ -2840,15 +2839,7 @@ void instruction_cycle(struct gb_state *state) {
 	}
 }
 
-void sh(int n) {
-	if (n == SIGSEGV) {
-		puts("SEG\n");
-		exit(0);
-	}
-}
-
 void start(uint8_t *bs_mem, uint8_t *cart_mem, int bootstrap_flag) {
-	//signal(SIGSEGV, sh);
 	struct gb_state *state = calloc(1, sizeof(struct gb_state));
 	state->mem = calloc(0x10000, sizeof(uint8_t));
 	gb_mem = state->mem;

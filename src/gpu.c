@@ -20,11 +20,19 @@ int current_time = 0;
 uint8_t current_line = 0x0;
 int vblank = 0;
 
-void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int sprite, int xflip) {
+void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int sprite, int xflip, int pstart) {
 	uint8_t color, c;
-	for (int i = 0; i < 8; i++) {
-		if (x + i < 0)
-			continue;
+	int i;
+	for (i = 0; i < pstart; ++i) {
+		if (xflip) {
+			row0 = row0 >> 1;
+			row1 = row1 >> 1;
+		} else {
+			row0 = row0 << 1;
+			row1 = row1 << 1;
+		}
+	}
+	for (i = 0; i < 8 - pstart; i++) {
 		if (xflip) {
 			color = ((row1 << 1) & 0x02) | (row0 & 0x1);
 			c = (pal >> (2 * color)) & 0x3;
@@ -67,7 +75,7 @@ void draw_sprites(uint8_t y) {
 			if (sprite_attr->palette) {
 				pal = gb_mem[OBP1];
 			}
-			draw_sprite_row(x_start, y, row0, row1, pal, 1, sprite_attr->xflip);
+			draw_sprite_row(x_start, y, row0, row1, pal, 1, sprite_attr->xflip, 0);
 		}
 	}
 }
@@ -100,7 +108,7 @@ void draw_window(uint8_t y) {
 		uint8_t *data = get_tile_data(index, 16, lcdc->bg_tile_sel);
 		uint8_t row0 = data[line * 2];
 		uint8_t row1 = data[line * 2 + 1];
-		draw_sprite_row(tile_start_x, y, row0, row1, gb_mem[BGP], 0, 0);
+		draw_sprite_row(tile_start_x, y, row0, row1, gb_mem[BGP], 0, 0, 0);
 	}
 }
 
@@ -119,17 +127,20 @@ void draw_background(uint8_t y) {
 	uint8_t scx = gb_mem[SCX];
 
 	uint8_t x_start = scx / 8;
+	uint8_t x_off = scx % 8;
 	uint8_t y_start = (uint8_t)(y + scy) / 8;
 	uint8_t line = (scy + y) % 8;
 	for (int i = 0; i < 32; i++) {
 		uint8_t tile = i + x_start;
-		uint8_t tile_start_x = i * 8 - (scx % 8);
+		uint8_t offset = i ? x_off : 0;
+		uint8_t tile_start_x = i * 8 - offset;
+		int pstart = !i ? x_off : 0;
 		uint16_t tile_addr = tile_map_addr + tile + y_start * 32;
 		uint8_t index = gb_mem[tile_addr];
 		uint8_t *data = get_tile_data(index, 16, lcdc->bg_tile_sel);
 		uint8_t row0 = data[line * 2];
 		uint8_t row1 = data[line * 2 + 1];
-		draw_sprite_row(tile_start_x, y, row0, row1, gb_mem[BGP], 0, 0);
+		draw_sprite_row(tile_start_x, y, row0, row1, gb_mem[BGP], 0, 0, pstart);
 	}
 }
 

@@ -155,7 +155,7 @@ uint8_t *get_tile_data(uint8_t index, int size, int bg_tile_sel) {
 	if (bg_tile_sel) {
 		return &gb_mem[SPRITE_TILES + (uint8_t)index * size];
 	} else {
-		return &gb_mem[BG_TILES + 0x800 + (int8_t)index * size];
+		return &gb_mem[0x9000 + (int8_t)index * size];
 	}
 }
 

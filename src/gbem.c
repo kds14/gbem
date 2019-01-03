@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
 	}
 	uint8_t *cart_mem = read_file(cart_path, &cart_size);
 
-	if (start_display(scale_factor)) {
+	if (!cart_mem || start_display(scale_factor)) {
 		return 1;
 	}
 	setup_mem_banks(cart_mem);
