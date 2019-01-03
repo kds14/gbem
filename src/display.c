@@ -16,7 +16,6 @@ SDL_Texture *texture = NULL;
 SDL_Renderer *renderer = NULL;
 
 uint32_t colors[4];
-//uint8_t pixels[SCREEN_WIDTH];
 uint32_t* pixels;
 
 void lock_texture() {
@@ -54,29 +53,21 @@ int start_display(int scale_factor) {
 	return 0;
 }
 
-int count = 0;
 void draw_pixel(int x, int y, uint8_t color) {
-	count++;
 	if (x < 0 || x > SCREEN_WIDTH || y < 0 || y > SCREEN_HEIGHT)
 		return;
 	pixels[y * SCREEN_WIDTH + x] = colors[color];
-	//SDL_RenderDrawPoint(renderer, x, y);
-	//uint32_t *p = (uint32_t*)((uint8_t*)surface->pixels + y * surface->pitch + x * sizeof(uint32_t));
-	//*p = SDL_MapRGB(surface->format, c, c, c);
-}
-
-void finish_row(int y) {
-	int x;
-	for (x = 0; x < SCREEN_WIDTH; ++x) {
-		uint8_t c = pixels[x];
-		SDL_SetRenderDrawColor(renderer, c, c, c, 0);
-		SDL_RenderDrawPoint(renderer, x, y);
-	}
 }
 
 void clear_renderer() {
 	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 	SDL_RenderClear(renderer);
+}
+
+void clear_texture() {
+	int i;
+	for (i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; ++i)
+		pixels[i] = colors[0];
 }
 
 void ready_render() {
@@ -86,13 +77,9 @@ void ready_render() {
 }
 
 void display_render() {
-	//SDL_UpdateTexture(texture, NULL, pixels, SCREEN_WIDTH * 4);
-	//texture = SDL_CreateTextureFromSurface(renderer, surface);
-	//SDL_RenderCopy(renderer, texture, NULL, NULL);
 	SDL_RenderPresent(renderer);
+	clear_texture();
 	lock_texture();
-	//printf("%d\n", count);
-	count = 0;
 }
 
 

@@ -126,12 +126,12 @@ void draw_background(uint8_t y) {
 	uint8_t scy = gb_mem[SCY];
 	uint8_t scx = gb_mem[SCX];
 
-	uint8_t x_start = scx / 8;
+	//uint8_t x_start = scx / 8;
 	uint8_t x_off = scx % 8;
 	uint8_t y_start = (uint8_t)(y + scy) / 8;
-	uint8_t line = (scy + y) % 8;
+	uint8_t line = (uint8_t)(scy + y) % 8;
 	for (int i = 0; i < 32; i++) {
-		uint8_t tile = i + x_start;
+		uint8_t tile = (uint8_t)(i * 8 + scx) / 8;
 		uint8_t offset = i ? x_off : 0;
 		uint8_t tile_start_x = i * 8 - offset;
 		int pstart = !i ? x_off : 0;
