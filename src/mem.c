@@ -160,8 +160,8 @@ uint8_t *get_tile_data(uint8_t index, int size, int bg_tile_sel) {
 }
 
 void set_stat_mode(uint8_t mode) {
-	int change = (gb_mem[STAT] & 0x03) == mode;
-	if (!change)
+	int no_change = (gb_mem[STAT] & 0x03) == mode;
+	if (no_change)
 		return;
 	gb_mem[STAT] = (gb_mem[STAT] & 0xFC) | mode;
 	if (gb_mem[STAT] & 0x8 && mode == 0) {

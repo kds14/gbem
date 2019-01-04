@@ -170,7 +170,10 @@ int gpu_tick() {
 		// HBLANK
 		if (!vblank)
 			set_stat_mode(0x0);
-	} 
+	} else if (!(current_time % (SCANLINE_TIME - 2 * HBLANK_TIME))) {
+		if (!vblank)
+			set_stat_mode(0x3);
+	}
 
 	if (!(current_time % VDRAW_TIME) && current_time) {
 		// VBLANK

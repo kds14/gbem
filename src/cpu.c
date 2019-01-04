@@ -1473,6 +1473,10 @@ int execute_cb(struct gb_state *state) {
  * Returns number of clock cycles.
  */
 int execute(struct gb_state *state) {
+	/*if (state->pc == 0x0AF6) {
+	printf("STAT; %02X\n", state->mem[0xFF41]);
+	exit(0);
+}*/
 	uint16_t pc = state->pc;
 	uint8_t op[3]; 
 	op[0] = get_mem(state->pc);
