@@ -17,6 +17,9 @@ static const int REFRESH_TIME = 70224;
 static const int OAM_COUNT = 40;
 //static const int BG_TILE_COUNT = 32;
 
+enum dstate {HBLANK, VBLANK, OAM_READ, OAM_VRAM_READ};
+enum dstate dstate = OAM_READ;
+
 int current_time = 0;
 uint8_t current_line = 0x0;
 int vblank = 0;
@@ -160,37 +163,52 @@ int gpu_tick() {
 		vblank = 0;
 		return 0;
 	}
-	if (!(current_time % SCANLINE_TIME)) {
-		// HDRAW
-		if (!vblank)
-			set_stat_mode(0x02);
-		draw_scan_line(current_line++);
-		set_ly(current_line);
-	} else if (!(current_time % (SCANLINE_TIME - HBLANK_TIME))) {
-		// HBLANK
-		if (!vblank)
-			set_stat_mode(0x0);
-	} else if (!(current_time % (SCANLINE_TIME - 2 * HBLANK_TIME))) {
-		if (!vblank)
-			set_stat_mode(0x3);
-	}
-
-	if (!(current_time % VDRAW_TIME) && current_time) {
-		// VBLANK
-		get_if()->vblank = 1;
-		set_stat_mode(0x01);
-		vblank = 1;
-		ready_render();
-	}
-	if (!(current_time % REFRESH_TIME) && current_time) {
-		// END
-		display_render();
-		on_frame_end();
-		current_time = -1;
-		current_line = 0;
-		set_ly(current_line);
-		set_stat_mode(0x02);
-		vblank = 0;
+	switch (dstate) {
+		case OAM_READ:
+			if (!(current_time % (SCANLINE_TIME - 2 * HBLANK_TIME))) {
+				set_stat_mode(OAM_VRAM_READ);
+				dstate = OAM_VRAM_READ;
+			} 
+			break;
+		case OAM_VRAM_READ:
+			if (!(current_time % (SCANLINE_TIME - HBLANK_TIME))) {
+				set_stat_mode(HBLANK);
+				dstate = HBLANK;
+			}
+			break;
+		case HBLANK:
+			if (!(current_time % SCANLINE_TIME)) {
+				draw_scan_line(current_line++);
+				set_ly(current_line);
+				set_stat_mode(OAM_READ);
+				dstate = OAM_READ;
+			}
+			if (!(current_time % VDRAW_TIME)) {
+				// VBLANK
+				get_if()->vblank = 1;
+				set_stat_mode(VBLANK);
+				dstate = VBLANK;
+				vblank = 1;
+				ready_render();
+			}
+			break;
+		case VBLANK:
+			if (!(current_time % SCANLINE_TIME)) {
+				draw_scan_line(current_line++);
+				set_ly(current_line);
+			}
+			if (!(current_time % REFRESH_TIME)) {
+				// END
+				display_render();
+				on_frame_end();
+				current_time = -1;
+				current_line = 0;
+				set_ly(current_line);
+				set_stat_mode(OAM_READ);
+				dstate = OAM_READ;
+				vblank = 0;
+			}
+			break;
 	}
 	current_time += PIXEL_TIME;
 	return 0;
