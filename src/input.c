@@ -43,12 +43,12 @@ void handle_events() {
 					if (!ks)
 						gb_mem[IF] |= 0x10;
 					break;
-				case SDLK_z:
+				case SDLK_x:
 					p15 = ks ? p15 | P10 : p15 & 0xFE;
 					if (!ks)
 						gb_mem[IF] |= 0x10;
 					break;
-				case SDLK_x:
+				case SDLK_z:
 					p15 = ks ? p15 | P11 : p15 & 0xFD;
 					if (!ks)
 						gb_mem[IF] |= 0x10;
