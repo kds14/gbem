@@ -6,11 +6,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define NO_PRIORITY 0xFFFF // value that sprite priority can't be
+// value that sprite priority can't be OAM size is less than 0xFF
+#define NO_PRIORITY 0xFFFF
 
 int start_display(int scale_factor);
 void end_display();
 void clear_renderer();
+
+// prty: sprite priority flag, sprty: sprite priority (see display.c)
 void draw_pixel(int x, int y, uint8_t c, int bg, int prty, uint16_t sprty);
 
 void display_render();

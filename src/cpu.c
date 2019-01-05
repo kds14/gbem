@@ -74,32 +74,6 @@ struct gb_state *gbs = NULL;
 uint16_t div_cycles;
 uint32_t timer_cycles, total_cycles;
 
-void daa(struct gb_state *state) {
-	int res = state->a;
-	if (state->fn) {
-		if (state->fh) {
-			res -= 0x06;
-			if (!state->fc)
-				res &= 0xFF;
-		}
-		if (state->fc) {
-			res -= 0x60;
-		}
-	}
-	else {
-		if ((res & 0x0F) > 0x9 || state->fh) {
-			res += 0x06;
-		}
-		if (res > 0x9F || state->fc) {
-			res += 0x60;
-		}
-	}
-	state->fc |= res > 0xFF;
-	state->fh = 0;
-	state->a = res & 0xFF;
-	state->fz = !state->a;
-}
-
 void set_add16_flags(struct gb_state *state, uint16_t a, uint16_t b) {
 	state->fn = 0;
 	state->fh = (((a & 0x0FFF) + (b & 0x0FFF)) & 0x1000) == 0x1000;
@@ -148,6 +122,10 @@ void adc(struct gb_state *state, uint8_t val) {
 	state->a = res & 0xFF;
 }
 
+/*
+ * Subtracts from register the value and the carry bit.
+ * Important: set flags if subtracting the carry from the value would cause them to be set
+ */
 void subc(struct gb_state *state, uint8_t val) {
 	uint8_t tmp = state->a - state->fc;
 	state->fh = ((state->a - state->fc) & 0xF) > (state->a & 0xF);
@@ -228,6 +206,10 @@ void rst(struct gb_state *state, uint16_t val) {
 	jump(state, 1, val);
 }
 
+/*
+ * Rotate as if the carry was the 9th bit.
+ * Carry becomes bit 0 and bit 7 becomes what carry was.
+ */
 void rot_right(struct gb_state *state, uint8_t *reg) {
 	uint8_t bit7 = state->fc << 7;
 	uint8_t val = *reg;
@@ -238,6 +220,9 @@ void rot_right(struct gb_state *state, uint8_t *reg) {
 	state->fh = 0;
 }
 
+/*
+ * Rotate right where the 0 bit because the 7 bit and the carry
+ */
 void rot_right_carry(struct gb_state *state, uint8_t *reg) {
 	uint8_t val = *reg;
 	state->fc = val & 0x01;
@@ -304,6 +289,33 @@ void res(struct gb_state *state, uint8_t bit, uint8_t *reg) {
 void set(struct gb_state *state, uint8_t bit, uint8_t *reg) {
 	*reg |= (0x01 << bit);
 }
+
+void daa(struct gb_state *state) {
+	int res = state->a;
+	if (state->fn) {
+		if (state->fh) {
+			res -= 0x06;
+			if (!state->fc)
+				res &= 0xFF;
+		}
+		if (state->fc) {
+			res -= 0x60;
+		}
+	}
+	else {
+		if ((res & 0x0F) > 0x9 || state->fh) {
+			res += 0x06;
+		}
+		if (res > 0x9F || state->fc) {
+			res += 0x60;
+		}
+	}
+	state->fc |= res > 0xFF;
+	state->fh = 0;
+	state->a = res & 0xFF;
+	state->fz = !state->a;
+}
+
 
 void handle_debug(int start_pc, int pc, uint8_t* op, int cycles, int cb) {
 	if (debug_enabled) {

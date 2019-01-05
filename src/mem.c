@@ -5,33 +5,32 @@
 #include "display.h"
 #include "input.h"
 
-static const size_t DMA_SIZE = 0xA0;
+#define DMA_SIZE 0xA0
 
 /*
  * Memory banking variables 
  */
 enum mbc1_mod {_16_8, _4_32};
 struct mb_data {
-	uint8_t cart_type;
-	uint8_t rom_idx;
-	enum mbc1_mod mode;
-	int count;
+	uint8_t cart_type; // found at 0x147 of header (ROM, MBC1, etc)
+	uint8_t rom_idx; // current ROM bank index
+	enum mbc1_mod mode; 
+	int count; // total count of ROM banks
 	uint8_t **rom_banks;
 };
 
 struct mb_data mbd;
 
 void sel_mode(uint8_t mode) {
-	//printf("SEL MODE %02X\n", mode);
 	mbd.mode = mode;
 }
 
 void sel_bank(uint8_t bank) {
-	//printf("SEL BANK %02X\n", bank);
 	mbd.rom_idx = bank;
 }
 
 uint8_t *get_mem_ptr(uint16_t addr) {
+	// if accessing ROM bank memory, select from appropriate bank
 	if (mbd.cart_type != 0 && addr >= 0x4000 && addr < 0x8000) {
 		uint16_t offset = addr - 0x4000;
 		return &(mbd.rom_banks[mbd.rom_idx][offset]);
@@ -40,6 +39,7 @@ uint8_t *get_mem_ptr(uint16_t addr) {
 }
 
 uint8_t get_mem(uint16_t addr) {
+	// if accessing ROM bank memory, select from appropriate bank
 	if (mbd.cart_type != 0 && addr >= 0x4000 && addr < 0x8000) {
 		uint16_t offset = addr - 0x4000;
 		return mbd.rom_banks[mbd.rom_idx][offset];
@@ -55,7 +55,7 @@ void dma(uint8_t addr) {
 }
 
 void set_mem(uint16_t dest, uint8_t data) {
-	// cannot write to ROM
+	// Writes to ROM are instead used to set MBC based options
 	if (dest < 0x8000) {
 		if (mbd.cart_type != 0x0) {
 			if (dest >= 0x6000 && dest < 0x8000)
@@ -65,12 +65,15 @@ void set_mem(uint16_t dest, uint8_t data) {
 		}
 		return;
 	}
+
+	// STAT register limits access to OAM and VRAM based on the LCD mode
 	struct stat *stat = get_stat();
 	if (dest >= 0x8000 && dest <= 0x9FFF && stat->mode_flag == 0x03)
 		return;
 	if (dest >= 0xFE00 && dest <= 0xFE9F && stat->mode_flag > 0x01)
 		return;
 
+	// writing to 0xFF00 requests button input info
 	if (dest == 0xFF00) {
 		uint8_t p15 = data & 0x20;
 		uint8_t p14 = data & 0x10;
@@ -84,6 +87,7 @@ void set_mem(uint16_t dest, uint8_t data) {
 	}
 
 	// Setting 7th bit in LCDC sets LY = 0
+	// TODO: this may actually be false despite docs
 	if (dest == LCDC) {
 		uint8_t bit7 = data >> 7;
 		uint8_t old_bit7 = gb_mem[LCDC] >> 7;
@@ -93,25 +97,31 @@ void set_mem(uint16_t dest, uint8_t data) {
 	}
 
 	gb_mem[dest] = data;
+	// writes to 0xC000-0xDDFF are mirrored at 0xE000-0xFE00 and vice versa
 	if (dest >= INTERNAL_RAM0 && dest <= 0xDDFF) {
 		gb_mem[dest + ECHO_OFFSET] = data;
 	} else if (dest >= ECHO_RAM && dest <= 0xFDFF) {
 		gb_mem[dest - ECHO_OFFSET] = data;
 	}
 
+	// writes to FF46 initiate a DMA transfer at the given start address
 	if (dest == DMA && data <= 0xF1) {
 		dma(data);
 	}
 	// TODO: look at specifics of some special registers
 }
 
+/*
+ * Sets up memory banks based on cartridge header.
+ * 0x0147: cartridge type (ROM only, MBC1, MBC2, etc)
+ * 0x0148: rom size aka number of ROM banks (val isn't the number)
+ */
 void setup_mem_banks(uint8_t *cart_mem) {
 	mbd.cart_type = cart_mem[0x0147];
 	int rom_bank_count = 2;
 	if (mbd.cart_type == 0)
 		return;
 	uint8_t rom_size = cart_mem[0x0148];
-	//uint8_t ram_size = cart_mem[0x0149];
 	if (mbd.cart_type == 0x01) {
 		if (rom_size <= 6)
 			rom_bank_count = 0x1 << (rom_size + 1);
@@ -159,6 +169,10 @@ uint8_t *get_tile_data(uint8_t index, int size, int bg_tile_sel) {
 	}
 }
 
+/*
+ * Set's the stat mode and starts an interrupt if the appropriate
+ * STAT flag is set.
+ */
 void set_stat_mode(uint8_t mode) {
 	int no_change = (gb_mem[STAT] & 0x03) == mode;
 	if (no_change)
@@ -175,6 +189,7 @@ void set_stat_mode(uint8_t mode) {
 
 void set_ly(uint8_t val) {
 	gb_mem[LY] = val;
+	// set LYC=LY coincidence flag which may cause an interrupt based on STAT
 	if (val == gb_mem[LYC]) {
 		gb_mem[STAT] |= 0x4;
 		if (gb_mem[STAT] & 0x40) {

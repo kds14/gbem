@@ -142,11 +142,13 @@ void set_stat_mode(uint8_t mode);
 uint8_t *gb_mem;
 
 /* 
- * All CPU based memory writing must go through set_mem because
- * there are special rules for some areas of memory
+ * All CPU based memory writing must go through set_mem and all
+ * memory reading must go through get_mem or get_mem_ptr because
+ * there are special rules for some areas of memory.
+ * NOTE: Do not do pointer arithmetic with get_mem_ptr, you may go
+ * into the incorrect memory area.
  */
 void set_mem(uint16_t dest, uint8_t data);
-
 uint8_t get_mem(uint16_t addr);
 uint8_t *get_mem_ptr(uint16_t addr);
 
