@@ -55,21 +55,19 @@ void draw_sprites(uint8_t y) {
 	if (!lcdc->obj_display)
 		return;
 
-	uint8_t obj_height = 8;
-	if (lcdc->obj_size)
-		obj_height *= 2;
+	uint8_t obj_scale = lcdc->obj_size ? 2 : 1;
+	uint8_t obj_height = obj_scale * 8;
 
 	for (int i = 0; i < OAM_COUNT; i++) {
 		struct sprite_attr *sprite_attr = get_sprite_attr(i);
 		uint8_t y_start = sprite_attr->y - SPRITE_Y_OFFSET;
 		int x_start = sprite_attr->x - 8;
-		// TODO: flipping when height is 16 bits
 
 		if (y_start <= y && y_start + obj_height > y) {
 			uint8_t line = y - y_start;
 			uint8_t *data = get_sprite_data(sprite_attr->pattern, 0);
 			if (sprite_attr->yflip)
-				line = 7 - line;
+				line = 8 * obj_scale - 1 - line;
 			uint8_t row0 = data[line * 2];
 			uint8_t row1 = data[line * 2 + 1];
 			uint8_t pal = gb_mem[OBP0];

@@ -146,7 +146,7 @@ struct sprite_attr *get_sprite_attr(int index) {
 uint8_t *get_sprite_data(uint8_t index, int bg) {
 	int size = 16;
 	if (get_lcdc()->obj_size && !bg) {
-		size *= 2;
+		index &= 0xFE;
 	}
 	return &gb_mem[SPRITE_TILES + (uint8_t)index * size];
 }
