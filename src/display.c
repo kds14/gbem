@@ -24,11 +24,18 @@ uint32_t* pixels;
 uint16_t priority[SCREEN_WIDTH * SCREEN_HEIGHT];
 uint8_t bgf[SCREEN_WIDTH * SCREEN_HEIGHT];
 
+void clear_texture() {
+	int i;
+	for (i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; ++i)
+		pixels[i] = colors[0];
+}
+
 void lock_texture() {
 	int pitch;
-	memset(&priority, 0, 2 * SCREEN_WIDTH * SCREEN_HEIGHT);
-	memset(&bgf, 0, SCREEN_WIDTH * SCREEN_HEIGHT);
+	memset(&priority[0], 0, sizeof(uint16_t) * SCREEN_WIDTH * SCREEN_HEIGHT);
+	memset(&bgf[0], 0, SCREEN_WIDTH * SCREEN_HEIGHT);
 	SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch);
+	clear_texture();
 }
 
 int start_display(int scale_factor) {
@@ -85,12 +92,6 @@ void clear_renderer() {
 	SDL_RenderClear(renderer);
 }
 
-void clear_texture() {
-	int i;
-	for (i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; ++i)
-		pixels[i] = colors[0];
-}
-
 void ready_render() {
 	SDL_UnlockTexture(texture);
 	SDL_RenderCopy(renderer, texture, NULL, NULL);
@@ -99,7 +100,6 @@ void ready_render() {
 
 void display_render() {
 	SDL_RenderPresent(renderer);
-	clear_texture();
 	lock_texture();
 }
 

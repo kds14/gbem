@@ -35,12 +35,14 @@ struct gt gtt;
 void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int sprite, int xflip, int pstart, int prty, uint16_t sprty) {
 	uint8_t color, c;
 	int i;
-	if (xflip) {
-		row0 = row0 >> pstart;
-		row1 = row1 >> pstart;
-	} else {
-		row0 = row0 << pstart;
-		row1 = row1 << pstart;
+	if (pstart) {
+		if (xflip) {
+			row0 = row0 >> pstart;
+			row1 = row1 >> pstart;
+		} else {
+			row0 = row0 << pstart;
+			row1 = row1 << pstart;
+		}
 	}
 	for (i = 0; i < 8 - pstart; i++) {
 		if (xflip) {
@@ -49,7 +51,7 @@ void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int 
 			row0 = row0 >> 1;
 			row1 = row1 >> 1;
 		} else {
-			color = ((row1 >> 7) << 1) | (row0 >> 7);
+			color = (((row1 >> 7) << 1) | (row0 >> 7)) & 0x3;
 			c = (pal >> (2 * color)) & 0x3;
 			row0 = row0 << 1;
 			row1 = row1 << 1;
@@ -189,8 +191,8 @@ int gpu_tick() {
 			break;
 		case HBLANK:
 			if (!(++gtt.hbt % HBLANK_TIME)) {
-				draw_scan_line(current_line++);
 				set_ly(current_line);
+				draw_scan_line(current_line++);
 				set_stat_mode(OAM_READ);
 				dstate = OAM_READ;
 				gtt.ort = 0;
@@ -206,8 +208,8 @@ int gpu_tick() {
 			break;
 		case VBLANK:
 			if (!(++gtt.vbt % SCANLINE_TIME)) {
-				draw_scan_line(current_line++);
 				set_ly(current_line);
+				draw_scan_line(current_line++);
 				//printf("%d\n", current_line);
 			}
 			if (current_time >= REFRESH_TIME) {
