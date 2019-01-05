@@ -1,4 +1,5 @@
 #include "debug.h"
+#include "mem.h"
 
 long long opc[0x100];
 long long opc_cb[0x100];
@@ -89,3 +90,22 @@ void fprintf_debug_info(FILE* stream) {
 		}
 	}
 }
+
+void print_mem() {
+	uint16_t i, j, addr;
+	for (i = 0; i < 0x1000; ++i) {
+		addr = i << 4;
+		printf("%04X  ", addr);
+		for (j = 0; j < 0x10; ++j) {
+			printf("%02X ", gb_mem[addr+j]);
+		}
+		puts("");
+	}
+}
+
+
+
+
+
+
+

@@ -10,7 +10,7 @@ static const int PIXEL_TIME = 1;
 //static const int HDRAW_TIME = 240;
 static const int HBLANK_TIME = 200;
 static const int SCANLINE_TIME = 458;
-static const int VDRAW_TIME = 65952;
+//static const int VDRAW_TIME = 65952;
 //static const int VBLANK_TIME = 4580;
 static const int REFRESH_TIME = 70224;
 
@@ -22,7 +22,6 @@ enum dstate dstate = OAM_READ;
 
 int current_time = 0;
 uint8_t current_line = 0x0;
-int vblank = 0;
 
 void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int sprite, int xflip, int pstart) {
 	uint8_t color, c;
@@ -154,50 +153,66 @@ void draw_scan_line(uint8_t y) {
 	draw_sprites(y);
 }
 
+struct gt {
+	int ort;
+	int ovrt;
+	int hbt;
+	int vbt;
+};
+
+struct gt gtt;
+
 int gpu_tick() {
 	struct lcdc *lcdc = get_lcdc();
 	if (!lcdc->lcd_control_op) {
 		set_stat_mode(0x0);
+		dstate = 0;
 		current_time = 0;
 		current_line = 0;
-		vblank = 0;
 		return 0;
+	}
+	if (!current_line && !current_time) {
+		memset(&gtt, 0, sizeof(gtt));
 	}
 	switch (dstate) {
 		case OAM_READ:
-			if (!(current_time % (SCANLINE_TIME - 2 * HBLANK_TIME))) {
+			if (++gtt.ort >= 77) {
 				set_stat_mode(OAM_VRAM_READ);
 				dstate = OAM_VRAM_READ;
+				gtt.ovrt = 0;
 			} 
 			break;
 		case OAM_VRAM_READ:
-			if (!(current_time % (SCANLINE_TIME - HBLANK_TIME))) {
+			if (++gtt.ovrt >= 144) {
 				set_stat_mode(HBLANK);
 				dstate = HBLANK;
+				gtt.hbt = 0;
 			}
 			break;
 		case HBLANK:
-			if (!(current_time % SCANLINE_TIME)) {
+			if (!(++gtt.hbt % HBLANK_TIME)) {
 				draw_scan_line(current_line++);
 				set_ly(current_line);
 				set_stat_mode(OAM_READ);
 				dstate = OAM_READ;
+				gtt.ort = 0;
 			}
-			if (!(current_time % VDRAW_TIME)) {
+			if (current_line >= 144) {
 				// VBLANK
 				get_if()->vblank = 1;
 				set_stat_mode(VBLANK);
 				dstate = VBLANK;
-				vblank = 1;
 				ready_render();
+				gtt.vbt = 0;
 			}
 			break;
 		case VBLANK:
-			if (!(current_time % SCANLINE_TIME)) {
+			if (!(++gtt.vbt % SCANLINE_TIME)) {
 				draw_scan_line(current_line++);
 				set_ly(current_line);
+				//printf("%d\n", current_line);
 			}
-			if (!(current_time % REFRESH_TIME)) {
+			if (current_time >= REFRESH_TIME) {
 				// END
 				display_render();
 				on_frame_end();
@@ -206,7 +221,8 @@ int gpu_tick() {
 				set_ly(current_line);
 				set_stat_mode(OAM_READ);
 				dstate = OAM_READ;
-				vblank = 0;
+				//printf("%d %d %d %d\n", gtt.hbt, gtt.vbt, gtt.ort, gtt.ovrt);
+				gtt.ort = 0;
 			}
 			break;
 	}

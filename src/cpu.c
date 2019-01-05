@@ -72,8 +72,7 @@ struct gb_state
 struct gb_state *gbs = NULL;
 
 uint16_t div_cycles;
-uint32_t timer_cycles;
-uint32_t total_cycles;
+uint32_t timer_cycles, total_cycles;
 
 void daa(struct gb_state *state) {
 	int res = state->a;
@@ -1473,10 +1472,9 @@ int execute_cb(struct gb_state *state) {
  * Returns number of clock cycles.
  */
 int execute(struct gb_state *state) {
-	/*if (state->pc == 0x0AF6) {
-	printf("STAT; %02X\n", state->mem[0xFF41]);
-	exit(0);
-}*/
+	if (state->mem[0x9847] == 0x00 && state->mem[0x984A] == 0x00 && state->mem[0x9849] == 0xBF && state->mem[0x98A4] == 0x40) {
+		printf("HL %04X A %02X\n", state->hl, state->a);
+	}
 	uint16_t pc = state->pc;
 	uint8_t op[3]; 
 	op[0] = get_mem(state->pc);

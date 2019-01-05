@@ -25,6 +25,7 @@ uint8_t *read_file(char *path, long *size) {
 
 void at_exit_debug() {
 	fprintf_debug_info(stdout);
+	print_mem();
 }
 
 int main(int argc, char **argv) {
