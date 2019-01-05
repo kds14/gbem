@@ -6,12 +6,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#define NO_PRIORITY 0xFFFF // value that sprite priority can't be
+
 int start_display(int scale_factor);
 void end_display();
 void clear_renderer();
-void draw_pixel(int x, int y, uint8_t);
+void draw_pixel(int x, int y, uint8_t c, int bg, int prty, uint16_t sprty);
 
-void draw_sprite(uint8_t y, uint8_t x, uint8_t *data, size_t height);
 void display_render();
 void finish_row();
 void ready_render();

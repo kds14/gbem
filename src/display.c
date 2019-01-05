@@ -17,9 +17,17 @@ SDL_Renderer *renderer = NULL;
 
 uint32_t colors[4];
 uint32_t* pixels;
+/*
+ * sprite priority is 2 bytes XXOO
+ * where XX is the x position and OO is OAM ordering
+ */
+uint16_t priority[SCREEN_WIDTH * SCREEN_HEIGHT];
+uint8_t bgf[SCREEN_WIDTH * SCREEN_HEIGHT];
 
 void lock_texture() {
 	int pitch;
+	memset(&priority, 0, 2 * SCREEN_WIDTH * SCREEN_HEIGHT);
+	memset(&bgf, 0, SCREEN_WIDTH * SCREEN_HEIGHT);
 	SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch);
 }
 
@@ -53,10 +61,23 @@ int start_display(int scale_factor) {
 	return 0;
 }
 
-void draw_pixel(int x, int y, uint8_t color) {
+int empty_pixel(int idx) {
+	uint32_t p = pixels[idx];
+	return p != colors[1] && p != colors[2] && p != colors[3];
+}
+
+void draw_pixel(int x, int y, uint8_t color, int bg, int prty, uint16_t sprty) {
 	if (x < 0 || x > SCREEN_WIDTH || y < 0 || y > SCREEN_HEIGHT)
 		return;
-	pixels[y * SCREEN_WIDTH + x] = colors[color];
+	int idx = SCREEN_WIDTH * y + x;
+	if (bg) {
+		pixels[idx] = colors[color];
+		bgf[idx] = 1;
+		priority[idx] = NO_PRIORITY;
+	} else if (empty_pixel(idx) ||  ((sprty < priority[idx]) && !(prty && bgf[idx]))) {
+		priority[idx] = sprty;
+		pixels[idx] = colors[color];
+	}
 }
 
 void clear_renderer() {

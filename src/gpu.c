@@ -23,7 +23,16 @@ enum dstate dstate = OAM_READ;
 int current_time = 0;
 uint8_t current_line = 0x0;
 
-void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int sprite, int xflip, int pstart) {
+struct gt {
+	int ort;
+	int ovrt;
+	int hbt;
+	int vbt;
+};
+
+struct gt gtt;
+
+void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int sprite, int xflip, int pstart, int prty, uint16_t sprty) {
 	uint8_t color, c;
 	int i;
 	if (xflip) {
@@ -46,7 +55,7 @@ void draw_sprite_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int 
 			row1 = row1 << 1;
 		}
 		if (!sprite || color != 0)
-			draw_pixel(x + i, y, c);
+			draw_pixel(x + i, y, c, !sprite, prty, sprty);
 	}
 }
 
@@ -58,23 +67,24 @@ void draw_sprites(uint8_t y) {
 	uint8_t obj_scale = lcdc->obj_size ? 2 : 1;
 	uint8_t obj_height = obj_scale * 8;
 
-	for (int i = 0; i < OAM_COUNT; i++) {
+	for (uint8_t i = 0; i < OAM_COUNT; i++) {
 		struct sprite_attr *sprite_attr = get_sprite_attr(i);
-		uint8_t y_start = sprite_attr->y - SPRITE_Y_OFFSET;
-		int x_start = sprite_attr->x - 8;
+		int y_start = sprite_attr->y - SPRITE_Y_OFFSET;
+		int x_start = sprite_attr->x - SPRITE_X_OFFSET;
 
 		if (y_start <= y && y_start + obj_height > y) {
 			uint8_t line = y - y_start;
 			uint8_t *data = get_sprite_data(sprite_attr->pattern, 0);
 			if (sprite_attr->yflip)
 				line = 8 * obj_scale - 1 - line;
+
 			uint8_t row0 = data[line * 2];
 			uint8_t row1 = data[line * 2 + 1];
 			uint8_t pal = gb_mem[OBP0];
 			if (sprite_attr->palette) {
 				pal = gb_mem[OBP1];
 			}
-			draw_sprite_row(x_start, y, row0, row1, pal, 1, sprite_attr->xflip, 0);
+			draw_sprite_row(x_start, y, row0, row1, pal, 1, sprite_attr->xflip, 0, sprite_attr->priority, ((uint16_t)sprite_attr->x << 8) | i);
 		}
 	}
 }
@@ -90,7 +100,6 @@ void draw_window(uint8_t y) {
 	if (lcdc->win_tile_map)
 		tile_map_addr = BG_MAP_DATA1;
 
-	//TODO: WX AND WY regs
 	uint8_t wy = gb_mem[WY];
 	uint8_t wx = gb_mem[WX];
 	if (y < wy)
@@ -107,7 +116,7 @@ void draw_window(uint8_t y) {
 		uint8_t *data = get_tile_data(index, 16, lcdc->bg_tile_sel);
 		uint8_t row0 = data[line * 2];
 		uint8_t row1 = data[line * 2 + 1];
-		draw_sprite_row(tile_start_x, y, row0, row1, gb_mem[BGP], 0, 0, 0);
+		draw_sprite_row(tile_start_x, y, row0, row1, gb_mem[BGP], 0, 0, 0, 0, NO_PRIORITY);
 	}
 }
 
@@ -139,7 +148,7 @@ void draw_background(uint8_t y) {
 		uint8_t *data = get_tile_data(index, 16, lcdc->bg_tile_sel);
 		uint8_t row0 = data[line * 2];
 		uint8_t row1 = data[line * 2 + 1];
-		draw_sprite_row(tile_start_x, y, row0, row1, gb_mem[BGP], 0, 0, pstart);
+		draw_sprite_row(tile_start_x, y, row0, row1, gb_mem[BGP], 0, 0, pstart, 0, NO_PRIORITY);
 	}
 }
 
@@ -150,15 +159,6 @@ void draw_scan_line(uint8_t y) {
 	draw_window(y);
 	draw_sprites(y);
 }
-
-struct gt {
-	int ort;
-	int ovrt;
-	int hbt;
-	int vbt;
-};
-
-struct gt gtt;
 
 int gpu_tick() {
 	struct lcdc *lcdc = get_lcdc();
