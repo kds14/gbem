@@ -90,18 +90,16 @@ void draw_pixel(int x, int y, uint8_t color, int bg, int prty, uint16_t sprty) {
 
 	/*
 	 * bg pixels are always written because they are drawn first
+	 *
+	 * A non-bg pixel is written if there is no 1,2, or 3 pixel drawn
+	 * yet or if the pixel has priority over any other sprites and
+	 * it isn't hidden behind a background.
 	 */
 	if (bg) {
 		pixels[idx] = colors[color];
-		bgf[idx] = !color;
+		bgf[idx] = color;
 		priority[idx] = NO_PRIORITY;
 	}
-	/*
-	 * A non-bg pixel that isn't a priority 1 sprite hidden behind a bg
-	 * is written if there is no pixel (color[0] or not written yet)
-	 * or the sprite has higher priority than a previously
-	 * placed sprite (based on X position then OAM ordering). 
-	 */
 	else if (empty_pixel(idx) ||  ((sprty < priority[idx]) && !(prty && bgf[idx]))) {
 		priority[idx] = sprty;
 		pixels[idx] = colors[color];
