@@ -5,7 +5,6 @@
 #include "mem.h"
 #include "gpu.h"
 #include "display.h"
-#include "input.h"
 
 
 #define SPRITE_X_OFFSET 8
@@ -211,13 +210,15 @@ void draw_scan_line(uint8_t y) {
 int gpu_tick() {
 	struct lcdc *lcdc = get_lcdc();
 	if (!lcdc->lcd_control_op) {
-		set_stat_mode(0x0);
-		dstate = 0;
+		set_stat_mode(VBLANK);
+		dstate = VBLANK;
 		current_time = 0;
 		current_line = 0;
 		return 0;
 	}
 	if (!current_line && !current_time) {
+		set_stat_mode(OAM_READ);
+		dstate = OAM_READ;
 		memset(&gtt, 0, sizeof(gtt));
 	}
 
@@ -262,7 +263,6 @@ int gpu_tick() {
 			if (current_time >= REFRESH_TIME) {
 				// END
 				display_render();
-				on_frame_end();
 				current_time = -1;
 				current_line = 0;
 				set_ly(current_line);

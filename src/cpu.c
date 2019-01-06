@@ -8,6 +8,7 @@
 #include "mem.h"
 #include "debug.h"
 #include "gpu.h"
+#include "input.h"
 
 #define CYCLES_PER_FRAME 70224
 
@@ -2768,6 +2769,11 @@ int tick(struct gb_state *state) {
 		gpu_tick();
 	}
 	handle_timers(state, cycles);
+	total_cycles += cycles;
+	if (total_cycles >= CYCLES_PER_FRAME/2) {
+		on_frame_end();
+		total_cycles = 0;
+	}
 	handle_interrupts(state);
 	return 0;
 }

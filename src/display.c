@@ -35,8 +35,14 @@ void clear_texture() {
 		pixels[i] = colors[0];
 }
 
+void clear_renderer() {
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+	SDL_RenderClear(renderer);
+}
+
 void lock_texture() {
 	int pitch;
+	clear_renderer();
 	memset(&priority[0], 0, sizeof(uint16_t) * SCREEN_WIDTH * SCREEN_HEIGHT);
 	memset(&bgf[0], 0, SCREEN_WIDTH * SCREEN_HEIGHT);
 	SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch);
@@ -100,6 +106,8 @@ void draw_pixel(int x, int y, uint8_t color, int bg, uint8_t rc, int prty, uint1
 		return;
 
 	int idx = SCREEN_WIDTH * y + x;
+	if (color > 3)
+		printf("%02X\n", color);
 
 	if (bg) {
 		pixels[idx] = colors[color];
@@ -111,11 +119,6 @@ void draw_pixel(int x, int y, uint8_t color, int bg, uint8_t rc, int prty, uint1
 		priority[idx] = sprty;
 		pixels[idx] = colors[color];
 	}
-}
-
-void clear_renderer() {
-	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-	SDL_RenderClear(renderer);
 }
 
 void ready_render() {

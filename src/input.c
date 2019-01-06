@@ -70,7 +70,8 @@ void handle_events() {
 }
 
 void on_frame_end() {
-	int wait_time = 16.75L - SDL_GetTicks() + frame_time;
+	//int wait_time = 16.75L - SDL_GetTicks() + frame_time;
+	int wait_time = 8.375L - SDL_GetTicks() + frame_time;
 	handle_events();
 	if (wait_time > 0)
 		SDL_Delay(wait_time);
