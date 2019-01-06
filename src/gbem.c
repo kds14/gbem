@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
 	if (!cart_mem || start_display(scale_factor)) {
 		return 1;
 	}
-	setup_mem_banks(cart_mem);
+	setup_mem_banks(cart_mem, cart_path);
 	start(bs_mem, cart_mem, bootstrap_flag);
 
 	end_display();

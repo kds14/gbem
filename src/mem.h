@@ -107,7 +107,7 @@ struct sprite_attr
 	};
 };
 
-struct stat
+struct statr
 {
 	uint8_t mode_flag: 2;
 	uint8_t coincidence : 1;
@@ -130,7 +130,7 @@ struct interrupt_flag
 
 struct sprite_attr *get_sprite_attr(int index);
 struct lcdc *get_lcdc();
-struct stat *get_stat();
+struct statr *get_stat();
 struct interrupt_flag *get_if();
 
 uint8_t *get_sprite_data(uint8_t index, int bg);
@@ -152,6 +152,6 @@ void set_mem(uint16_t dest, uint8_t data);
 uint8_t get_mem(uint16_t addr);
 uint8_t *get_mem_ptr(uint16_t addr);
 
-void setup_mem_banks(uint8_t* cart_mem);
+void setup_mem_banks(uint8_t* cart_mem, char* name);
 
 #endif

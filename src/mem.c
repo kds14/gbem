@@ -1,5 +1,11 @@
 #include <stdio.h>
 #include <math.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 #include "mem.h"
 #include "display.h"
@@ -77,7 +83,7 @@ void set_mem(uint16_t dest, uint8_t data) {
 	}
 
 	// STAT register limits access to OAM and VRAM based on the LCD mode
-	struct stat *stat = get_stat();
+	struct statr *stat = get_stat();
 	if (dest >= 0x8000 && dest <= 0x9FFF && stat->mode_flag == 0x03)
 		return;
 	if (dest >= 0xFE00 && dest <= 0xFE9F && stat->mode_flag > 0x01)
@@ -121,12 +127,45 @@ void set_mem(uint16_t dest, uint8_t data) {
 	// TODO: look at specifics of some special registers
 }
 
+char* sav_file_name = NULL;
+
+void save_ram() {
+	int i;
+	FILE* fp = fopen(sav_file_name, "w+");
+	if (!fp) {
+		fprintf(stderr, "Unable to save file %s\n", sav_file_name);
+		fprintf(stderr, "%s\n", strerror(errno));
+		return;
+	}
+	printf("Saving RAM...\n");
+	for (i = 0; i < mbd.ram_count; ++i) {	
+		fwrite(mbd.ram_banks[i], mbd.ram_size, 1, fp);
+	}
+	fclose(fp);
+}
+
+void load_ram(char* file_name) {
+	int i;
+	sav_file_name = calloc(strlen(file_name) + 5, sizeof(char));
+	strcpy(sav_file_name, file_name);
+	strcat(sav_file_name, ".sav");
+	FILE* fp = fopen(sav_file_name, "r");
+	if (!fp)
+		return;
+	printf("Loading RAM...\n");
+	for (i = 0; i < mbd.ram_count; ++i) {	
+		fread(mbd.ram_banks[i], mbd.ram_size, 1, fp);
+	}
+	fclose(fp);
+	//fchmod(fileno(fp), 0600);
+}
+
 /*
  * Sets up memory banks based on cartridge header.
  * 0x0147: cartridge type (ROM only, MBC1, MBC2, etc)
  * 0x0148: rom size aka number of ROM banks (val isn't the number)
  */
-void setup_mem_banks(uint8_t *cart_mem) {
+void setup_mem_banks(uint8_t *cart_mem, char* name) {
 	memset(&mbd, 0, sizeof(mbd));
 	mbd.cart_type = cart_mem[0x0147];
 	int i, rom_bank_count = 2;
@@ -149,6 +188,9 @@ void setup_mem_banks(uint8_t *cart_mem) {
 	for (i = 0; i < mbd.ram_count; ++i) {	
 		mbd.ram_banks[i] = calloc(mbd.ram_size, sizeof(uint8_t));
 	}
+	load_ram(name);
+	atexit(save_ram);
+
 
 	uint8_t rom_size = cart_mem[0x0148];
 	if (mbd.cart_type != 0x00) {
@@ -169,8 +211,8 @@ struct lcdc *get_lcdc() {
 	return (struct lcdc *)&gb_mem[LCDC];
 }
 
-struct stat *get_stat() {
-	return (struct stat *)&gb_mem[STAT];
+struct statr *get_stat() {
+	return (struct statr *)&gb_mem[STAT];
 }
 
 struct interrupt_flag *get_if() {
