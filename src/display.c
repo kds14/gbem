@@ -102,12 +102,10 @@ int empty_pixel(int idx) {
  * but bg color 0 is different based on the palette.
  */
 void draw_pixel(int x, int y, uint8_t color, int bg, uint8_t rc, int prty, uint16_t sprty) {
-	if (x < 0 || x > SCREEN_WIDTH || y < 0 || y > SCREEN_HEIGHT)
+	if (x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT)
 		return;
 
 	int idx = SCREEN_WIDTH * y + x;
-	if (color > 3)
-		printf("%02X\n", color);
 
 	if (bg) {
 		pixels[idx] = colors[color];
