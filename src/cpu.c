@@ -1575,7 +1575,7 @@ int execute(struct gb_state *state) {
 			break;
 		case 0x10:
 			/* STOP 0 */
-			fprintf(stderr, "STOP 0 not implemented\n");
+			//fprintf(stderr, "%04X: STOP 0 not implemented\n", state->pc);
 			state->pc++;
 			break;
 		case 0x11:
