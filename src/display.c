@@ -82,22 +82,29 @@ int empty_pixel(int idx) {
 	return p != colors[1] && p != colors[2] && p != colors[3];
 }
 
-void draw_pixel(int x, int y, uint8_t color, int bg, int prty, uint16_t sprty) {
+/*
+ * Draws a pixel
+ *
+ * bg pixels are always written because they are drawn first
+ *
+ * A non-bg pixel is written if there is no 1,2, or 3 pixel drawn
+ * yet or if the pixel has priority over any other sprites and
+ * it isn't hidden behind a background.
+ *
+ * rc is set if the given color is color 0 on the palette. This is
+ * important because priority 1 sprites need to write over bg color 0
+ * but bg color 0 is different based on the palette.
+ */
+void draw_pixel(int x, int y, uint8_t color, int bg, uint8_t rc, int prty, uint16_t sprty) {
 	if (x < 0 || x > SCREEN_WIDTH || y < 0 || y > SCREEN_HEIGHT)
 		return;
 
 	int idx = SCREEN_WIDTH * y + x;
 
-	/*
-	 * bg pixels are always written because they are drawn first
-	 *
-	 * A non-bg pixel is written if there is no 1,2, or 3 pixel drawn
-	 * yet or if the pixel has priority over any other sprites and
-	 * it isn't hidden behind a background.
-	 */
 	if (bg) {
 		pixels[idx] = colors[color];
-		bgf[idx] = color;
+		
+		bgf[idx] = rc;
 		priority[idx] = NO_PRIORITY;
 	}
 	else if (empty_pixel(idx) ||  ((sprty < priority[idx]) && !(prty && bgf[idx]))) {

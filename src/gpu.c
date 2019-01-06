@@ -72,7 +72,7 @@ void draw_tile_row(int x, int y, uint8_t row0, uint8_t row1, uint8_t pal, int sp
 		}
 		// sprite color 0 is transparent so do not draw
 		if (!sprite || color != 0)
-			draw_pixel(x + i, y, c, !sprite, prty, sprty);
+			draw_pixel(x + i, y, c, !sprite, c != (pal & 0x3) , prty, sprty);
 	}
 }
 

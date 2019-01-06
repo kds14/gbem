@@ -14,7 +14,7 @@ void end_display();
 void clear_renderer();
 
 // prty: sprite priority flag, sprty: sprite priority (see display.c)
-void draw_pixel(int x, int y, uint8_t c, int bg, int prty, uint16_t sprty);
+void draw_pixel(int x, int y, uint8_t c, int bg, uint8_t rc, int prty, uint16_t sprty);
 
 void display_render();
 void finish_row();
