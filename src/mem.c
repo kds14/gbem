@@ -141,7 +141,11 @@ void set_mem(uint16_t dest, uint8_t data) {
 		}
 	}
 
+	if (dest == LY)
+		data = 0;
+
 	gb_mem[dest] = data;
+
 	// writes to 0xC000-0xDDFF are mirrored at 0xE000-0xFE00 and vice versa
 	if (dest >= INTERNAL_RAM0 && dest <= 0xDDFF) {
 		gb_mem[dest + ECHO_OFFSET] = data;

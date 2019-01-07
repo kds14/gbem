@@ -328,7 +328,10 @@ void handle_debug(int start_pc, int pc, uint8_t* op, int cycles, int cb) {
 
 int execute_cb(struct gb_state *state) {
 	uint16_t pc = state->pc;
-	uint8_t *op = get_mem_ptr(state->pc);
+	uint8_t op[3]; 
+	op[0] = get_mem(state->pc);
+	op[1] = get_mem(state->pc + 1);
+	op[2] = get_mem(state->pc + 2);
 	int cycles = 8;
 	state->pc++;
 	uint8_t tmp;
@@ -2687,28 +2690,34 @@ void handle_interrupts(struct gb_state *state) {
 	uint8_t iff = state->mem[IF];
 	uint16_t addr = 0x0000;
 	uint8_t val = iff & ie;
+	uint8_t rb;
 	if (val & 0x01) {
 		// V-Blank
 		addr = VBLANK_ADDR;
+		rb = ~0x01;
 	} else if (val & 0x02) {
 		// LCDC
 		addr = LCDC_ADDR;
+		rb = ~0x02;
 	} else if (val & 0x04) {
 		// Timer overflow
 		addr = TIMER_OVERFLOW_ADDR;
+		rb = ~0x04;
 	} else if (val & 0x08) {
 		// Serial I/O transfer complete
 		addr = SERIAL_IO_TRANS_ADDR;
+		rb = ~0x08;
 	} else if (val & 0x10) {
 		// Transition from High to Low of Pin number P10-P13
 		addr = P10_P13_TRANSITION_ADDR;
+		rb = ~0x10;
 	}
 
 	if (addr != 0x000) {
 		if (state->ime) {
 			push(state, state->pc);
 			state->pc = addr;
-			state->mem[IF] = 0;
+			state->mem[IF] &= rb;
 			state->ime = 0;
 		}
 		state->halt = 0;

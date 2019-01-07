@@ -11,12 +11,13 @@
 #define SPRITE_Y_OFFSET 16
 
 #define PIXEL_TIME 1
-#define OAM_READ_TIME 77
-#define OAM_VRAM_READ_TIME 144
-#define HBLANK_TIME 200
-#define SCANLINE_TIME 458
+#define OAM_READ_TIME 83
+#define OAM_VRAM_READ_TIME 169
+#define HBLANK_TIME 207
+#define SCANLINE_TIME 456
 #define REFRESH_TIME 70224
 #define VBLANK_LINE 144
+#define FINAL_LINE 153
 
 #define OAM_COUNT 40
 #define BG_TILE_MAX 32
@@ -24,7 +25,7 @@
 enum dstate {HBLANK, VBLANK, OAM_READ, OAM_VRAM_READ};
 enum dstate dstate = OAM_READ;
 
-int current_time = 0;
+int reset = 0;
 uint8_t current_line = 0x0;
 
 // tracks LCD status mode timing
@@ -212,11 +213,13 @@ int gpu_tick() {
 	if (!lcdc->lcd_control_op) {
 		set_stat_mode(VBLANK);
 		dstate = VBLANK;
-		current_time = 0;
-		current_line = 0;
+		set_ly(0);
+		reset = 1;
 		return 0;
 	}
-	if (!current_line && !current_time) {
+	current_line = gb_mem[LY];
+	if (!current_line && reset) {
+		reset = 0;
 		set_stat_mode(OAM_READ);
 		dstate = OAM_READ;
 		memset(&gtt, 0, sizeof(gtt));
@@ -239,8 +242,8 @@ int gpu_tick() {
 			break;
 		case HBLANK:
 			if (!(++gtt.hbt % HBLANK_TIME)) {
-				set_ly(current_line);
 				draw_scan_line(current_line++);
+				set_ly(current_line);
 				set_stat_mode(OAM_READ);
 				dstate = OAM_READ;
 				gtt.ort = 0;
@@ -257,21 +260,19 @@ int gpu_tick() {
 		case VBLANK:
 			if (!(++gtt.vbt % SCANLINE_TIME)) {
 				// LY still increments during VBLANK
-				set_ly(current_line);
-				draw_scan_line(current_line++);
+				set_ly(current_line + 1);
 			}
-			if (current_time >= REFRESH_TIME) {
+			// TODO: ends at 153 or 154?
+			if (current_line > FINAL_LINE) {
 				// END
 				display_render();
-				current_time = -1;
-				current_line = 0;
-				set_ly(current_line);
+				reset = 1;
+				set_ly(0);
 				set_stat_mode(OAM_READ);
 				dstate = OAM_READ;
 				gtt.ort = 0;
 			}
 			break;
 	}
-	current_time += PIXEL_TIME;
 	return 0;
 }
