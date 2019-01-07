@@ -657,7 +657,6 @@ int execute_cb(struct gb_state *state) {
 			/* BIT 0,(HL) */
 			tmp = get_mem(state->hl);
 			bit(state, 0, &tmp);
-			set_mem(state->hl, tmp);
 			cycles = 12;
 			break;
 		case 0x47:
@@ -692,7 +691,6 @@ int execute_cb(struct gb_state *state) {
 			/* BIT 1,(HL) */
 			tmp = get_mem(state->hl);
 			bit(state, 1, &tmp);
-			set_mem(state->hl, tmp);
 			cycles = 12;
 			break;
 		case 0x4F:
@@ -727,7 +725,6 @@ int execute_cb(struct gb_state *state) {
 			/* BIT 2,(HL) */
 			tmp = get_mem(state->hl);
 			bit(state, 2, &tmp);
-			set_mem(state->hl, tmp);
 			cycles = 12;
 			break;
 		case 0x57:
@@ -762,7 +759,6 @@ int execute_cb(struct gb_state *state) {
 			/* BIT 3,(HL) */
 			tmp = get_mem(state->hl);
 			bit(state, 3, &tmp);
-			set_mem(state->hl, tmp);
 			cycles = 12;
 			break;
 		case 0x5F:
@@ -797,7 +793,6 @@ int execute_cb(struct gb_state *state) {
 			/* BIT 4,(HL) */
 			tmp = get_mem(state->hl);
 			bit(state, 4, &tmp);
-			set_mem(state->hl, tmp);
 			cycles = 12;
 			break;
 		case 0x67:
@@ -832,7 +827,6 @@ int execute_cb(struct gb_state *state) {
 			/* BIT 5,(HL) */
 			tmp = get_mem(state->hl);
 			bit(state, 5, &tmp);
-			set_mem(state->hl, tmp);
 			cycles = 12;
 			break;
 		case 0x6F:
@@ -867,7 +861,6 @@ int execute_cb(struct gb_state *state) {
 			/* BIT 6,(HL) */
 			tmp = get_mem(state->hl);
 			bit(state, 6, &tmp);
-			set_mem(state->hl, tmp);
 			cycles = 12;
 			break;
 		case 0x77:
@@ -902,7 +895,6 @@ int execute_cb(struct gb_state *state) {
 			/* BIT 7,(HL) */
 			tmp = get_mem(state->hl);
 			bit(state, 7, &tmp);
-			set_mem(state->hl, tmp);
 			cycles = 12;
 			break;
 		case 0x7F:
