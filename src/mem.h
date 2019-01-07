@@ -153,5 +153,6 @@ uint8_t get_mem(uint16_t addr);
 uint8_t *get_mem_ptr(uint16_t addr);
 
 void setup_mem_banks(uint8_t* cart_mem, char* name);
+void save_ram();
 
 #endif

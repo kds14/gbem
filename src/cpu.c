@@ -11,6 +11,7 @@
 #include "input.h"
 
 #define CYCLES_PER_FRAME 70224
+#define SAVE_INTERVAL 1800
 
 /*
  * Registers:
@@ -72,6 +73,7 @@ struct gb_state
 
 struct gb_state *gbs = NULL;
 
+int save_timer = 0;
 uint16_t div_cycles;
 uint32_t timer_cycles, total_cycles;
 
@@ -2771,8 +2773,12 @@ int tick(struct gb_state *state) {
 	}
 	handle_timers(state, cycles);
 	total_cycles += cycles;
-	if (total_cycles >= CYCLES_PER_FRAME/2) {
+	if (total_cycles >= CYCLES_PER_FRAME) {
 		on_frame_end();
+		if (++save_timer == SAVE_INTERVAL) {
+			save_ram();
+			save_timer = 0;
+		}
 		total_cycles = 0;
 	}
 	handle_interrupts(state);

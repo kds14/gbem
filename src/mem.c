@@ -170,7 +170,6 @@ void save_ram() {
 		fprintf(stderr, "%s\n", strerror(errno));
 		return;
 	}
-	printf("Saving RAM...\n");
 	for (i = 0; i < mbd.ram_count; ++i) {	
 		fwrite(mbd.ram_banks[i], mbd.ram_size, 1, fp);
 	}
@@ -185,7 +184,6 @@ void load_ram(char* file_name) {
 	FILE* fp = fopen(sav_file_name, "r");
 	if (!fp)
 		return;
-	printf("Loading RAM...\n");
 	for (i = 0; i < mbd.ram_count; ++i) {	
 		fread(mbd.ram_banks[i], mbd.ram_size, 1, fp);
 	}

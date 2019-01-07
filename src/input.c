@@ -64,14 +64,19 @@ void handle_events() {
 					if (!ks)
 						gb_mem[IF] |= 0x10;
 					break;
+				case SDLK_s:
+					if (ks)
+						save_ram();
+					break;
 			}
 		}
 	}
 }
-
+double rem = 0;
 void on_frame_end() {
-	//int wait_time = 16.75L - SDL_GetTicks() + frame_time;
-	int wait_time = 8.375L - SDL_GetTicks() + frame_time;
+	double base_wait = 16.74L - SDL_GetTicks() + frame_time + rem;
+	int wait_time = base_wait;
+	rem = base_wait - wait_time;
 	handle_events();
 	if (wait_time > 0)
 		SDL_Delay(wait_time);
