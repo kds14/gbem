@@ -2,7 +2,8 @@
 
 ![](https://i.imgur.com/KLglfpV.gif)
 
-Currently runs many of the early games such as Pac-Man, Tetris, Dr. Mario, Super Mario Land, and Castlevania: The Adventure.
+Currently runs many of the early games such as Pac-Man, Tetris, Dr. Mario, Super Mario Land, and Metroid 2. Pokemon runs without some minor visual glitches and no clock support.
+
 Supports ROM only and MBC1 cartridges. No audio yet. Passes blargg's cpu_instrs tests.
 
 SDL is setup like this https://wiki.libsdl.org/Installation#Linux.2FUnix
