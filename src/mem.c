@@ -198,6 +198,8 @@ void set_mem(uint16_t dest, uint8_t data) {
 char* sav_file_name = NULL;
 
 void save_ram() {
+	if (mbd.ram_count == 0)
+		return;
 	int i;
 	if (sav_file_name == NULL) {
 		fprintf(stderr, "Unable to save file\n");
@@ -215,20 +217,21 @@ void save_ram() {
 }
 
 void load_ram(char* file_name) {
+	if (mbd.ram_count == 0)
+		return;
 	int i;
 	sav_file_name = calloc(strlen(file_name) + 5, sizeof(char));
 	strcpy(sav_file_name, file_name);
 	strcat(sav_file_name, ".sav");
 	FILE* fp = fopen(sav_file_name, "r");
 	if (!fp) {
-		free(sav_file_name);
+		fprintf(stderr, "Unable to load file %s\n", sav_file_name);
 		return;
 	}
 	for (i = 0; i < mbd.ram_count; ++i) {	
 		fread(mbd.ram_banks[i], mbd.ram_size, 1, fp);
 	}
 	fclose(fp);
-	free(sav_file_name);
 }
 
 /*
