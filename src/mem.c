@@ -136,6 +136,7 @@ void set_mem(uint16_t dest, uint8_t data) {
 			mbc1_set_mem(dest, data);
 		else if (mbd.mbc == MBC3)
 			mbc3_set_mem(dest, data);
+		return;
 	}
 
 	if (dest >= 0xA000 && dest < 0xC000) {
@@ -205,9 +206,9 @@ void save_ram() {
 		fprintf(stderr, "Unable to save file\n");
 		return;
 	}
+	printf("%s\n", sav_file_name);
 	FILE* fp = fopen(sav_file_name, "w+");
 	if (!fp) {
-		fprintf(stderr, "Unable to save file %s\n", sav_file_name);
 		return;
 	}
 	for (i = 0; i < mbd.ram_count; ++i) {	
@@ -217,15 +218,15 @@ void save_ram() {
 }
 
 void load_ram(char* file_name) {
+	sav_file_name = calloc(strlen(file_name) + 10, sizeof(char));
+	strcpy(sav_file_name, file_name);
+	strcat(sav_file_name, ".sav");
 	if (mbd.ram_count == 0)
 		return;
 	int i;
-	sav_file_name = calloc(strlen(file_name) + 5, sizeof(char));
-	strcpy(sav_file_name, file_name);
-	strcat(sav_file_name, ".sav");
 	FILE* fp = fopen(sav_file_name, "r");
 	if (!fp) {
-		fprintf(stderr, "Unable to load file %s\n", sav_file_name);
+		//fprintf(stderr, "Unable to load file %s\n", sav_file_name);
 		return;
 	}
 	for (i = 0; i < mbd.ram_count; ++i) {	
@@ -280,10 +281,11 @@ void setup_mem_banks(uint8_t *cart_mem, char* name) {
 			mbd.mbc = NO_MBC;
 	}
 
+	mbd.ram_count = cart_mem[0x0149];
+
 	if (!ct)
 		return;
 
-	mbd.ram_count = cart_mem[0x0149];
 
 	mbd.ram_size = 0x2000;
 	if (mbd.ram_count == 0x01) {
