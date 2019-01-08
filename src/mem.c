@@ -1,11 +1,7 @@
 #include <stdio.h>
 #include <math.h>
-#include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <sys/stat.h>
+#include <time.h>
 
 #include "mem.h"
 #include "display.h"
@@ -13,12 +9,12 @@
 
 #define DMA_SIZE 0xA0
 
+enum mbc1_mod {ROM_MODE = 0, RAM_MODE = 1};
+enum mb_ctrl {NO_MBC, MBC1, MBC2, MBC3, MBC4, MBC5};
 /*
  * Memory banking variables 
  */
-enum mbc1_mod {ROM_MODE = 0, RAM_MODE = 1};
 struct mb_data {
-	uint8_t cart_type; // found at 0x147 of header (ROM, MBC1, etc)
 	uint8_t rom_idx; // current ROM bank index
 	uint8_t ram_idx; // current ROM bank index
 	uint8_t ram_rw; // cannot read or write from ext RAM without this set
@@ -26,20 +22,29 @@ struct mb_data {
 	uint8_t ram_count;
 	uint8_t rom_count;
 	enum mbc1_mod mode; 
+	enum mb_ctrl mbc;
+	int rtc;
+	uint8_t *rtc_bank;
 	uint8_t **rom_banks;
 	uint8_t **ram_banks;
 };
 
 struct mb_data mbd;
 
+time_t last_rtc = 0;
+
+void latch_rtc() {
+}
+
 uint8_t *get_mem_ptr(uint16_t addr) {
 	// if accessing ROM bank memory, select from appropriate bank
-	if (mbd.cart_type != 0 && addr >= 0x4000 && addr < 0x8000
+	if (mbd.mbc != NO_MBC && addr >= 0x4000 && addr < 0x8000
 		&& mbd.rom_idx < mbd.rom_count) {
 		return &mbd.rom_banks[mbd.rom_idx][addr - 0x4000];
 	}
 	if (addr >= 0xA000 && addr < 0xC000 && mbd.ram_rw) {
-		if (mbd.ram_count && (addr < 0xA800 || mbd.ram_size != 0x800)
+		if (mbd.rtc) {
+		} else if (mbd.ram_count && (addr < 0xA800 || mbd.ram_size != 0x800)
 			&& mbd.ram_idx < mbd.ram_count) {
 			return &mbd.ram_banks[mbd.ram_idx][addr - 0xA000];
 		}
@@ -58,50 +63,79 @@ void dma(uint8_t addr) {
 	memcpy(dest, src, DMA_SIZE);
 }
 
-void set_mem(uint16_t dest, uint8_t data) {
-	// Writes to ROM are instead used to set MBC based options
-	if (dest < 0x8000) {
+void mbc3_set_mem(uint16_t dest, uint8_t data) {
 	// TODO only RAM bank 00 can be used during mode 0
-		if (mbd.cart_type == 0x0) 
-			return;
-		if (dest >= 0x000 && dest < 0x2000)
-			mbd.ram_rw = (data & 0x0A) ? 1 : 0;
-		else if (dest >= 0x6000 && dest < 0x8000) {
-			mbd.mode = data & 0x1;
+	if (dest >= 0x000 && dest < 0x2000)
+		mbd.ram_rw = (data & 0x0A) ? 1 : 0;
+	else if (dest >= 0x6000 && dest < 0x8000) {
+		if (mbd.rtc == 1 && !data) {
+			mbd.rtc = 2;
+		} else if (mbd.rtc == 2 && data == 1) {
+			mbd.rtc = 1;
 		}
-		else if (dest >= 0x2000 && dest < 0x4000) {
-			mbd.rom_idx = data & 0x1F;
+	}
+	else if (dest >= 0x2000 && dest < 0x4000) {
+		mbd.rom_idx = data & 0x7F;
+	}
+	else if (dest >= 0x4000 && dest < 0x6000) {
+		if (data >= 0x08 && data <= 0x0C) {
+			mbd.rtc = 1;
+		} else {
+			if (data <= 0x3)
+				mbd.ram_idx = data & 0x3;
+			mbd.rtc = 0;
+		}
+	}
+}
+
+void mbc1_set_mem(uint16_t dest, uint8_t data) {
+	// TODO only RAM bank 00 can be used during mode 0
+	if (dest >= 0x000 && dest < 0x2000)
+		mbd.ram_rw = (data & 0x0A) ? 1 : 0;
+	else if (dest >= 0x6000 && dest < 0x8000) {
+		mbd.mode = data & 0x1;
+	}
+	else if (dest >= 0x2000 && dest < 0x4000) {
+		mbd.rom_idx = data & 0x1F;
+		if (mbd.rom_idx == 0x20)
+			mbd.rom_idx = 0x21;	
+		else if (mbd.rom_idx == 0x40)
+			mbd.rom_idx = 0x41;	
+		else if (mbd.rom_idx == 0x60) {
+			mbd.rom_idx = 0x61;
+		}	
+		if (mbd.rom_idx >= mbd.rom_count)
+			printf("%04X vs %04X\n", mbd.rom_idx, mbd.rom_count);
+	}
+	else if (dest >= 0x4000 && dest < 0x6000) {
+		if (mbd.mode == ROM_MODE) {
+			uint8_t pi = mbd.rom_idx;
+			mbd.rom_idx |= (data & 0x3) << 5;
 			if (mbd.rom_idx == 0x20)
 				mbd.rom_idx = 0x21;	
 			else if (mbd.rom_idx == 0x40)
 				mbd.rom_idx = 0x41;	
-			else if (mbd.rom_idx == 0x60) {
-				mbd.rom_idx = 0x61;
-			}	
-			if (mbd.rom_idx >= mbd.rom_count)
+			else if (mbd.rom_idx == 0x60)
+				mbd.rom_idx = 0x61;	
+			if (mbd.rom_idx >= mbd.rom_count) {
+				printf("B: %04X apply %04X\n", pi, data);
 				printf("%04X vs %04X\n", mbd.rom_idx, mbd.rom_count);
-		}
-		else if (dest >= 0x4000 && dest < 0x6000) {
-			if (mbd.mode == ROM_MODE) {
-				uint8_t pi = mbd.rom_idx;
-				mbd.rom_idx |= (data & 0x3) << 5;
-				if (mbd.rom_idx == 0x20)
-					mbd.rom_idx = 0x21;	
-				else if (mbd.rom_idx == 0x40)
-					mbd.rom_idx = 0x41;	
-				else if (mbd.rom_idx == 0x60)
-					mbd.rom_idx = 0x61;	
-				if (mbd.rom_idx >= mbd.rom_count) {
-					printf("B: %04X apply %04X\n", pi, data);
-					printf("%04X vs %04X\n", mbd.rom_idx, mbd.rom_count);
-					}
-			} else {
-				mbd.ram_idx = data & 0x3;
-				if (mbd.ram_idx >= mbd.ram_count)
-					printf("%04X vs %04X\n", mbd.ram_idx, mbd.ram_count);
 			}
+		} else {
+			mbd.ram_idx = data & 0x3;
+			if (mbd.ram_idx >= mbd.ram_count)
+				printf("%04X vs %04X\n", mbd.ram_idx, mbd.ram_count);
 		}
-		return;
+	}
+}
+
+void set_mem(uint16_t dest, uint8_t data) {
+	// Writes to ROM are instead used to set MBC based options
+	if (dest < 0x8000) {
+		if (mbd.mbc == MBC1)
+			mbc1_set_mem(dest, data);
+		else if (mbd.mbc == MBC3)
+			mbc3_set_mem(dest, data);
 	}
 
 	if (dest >= 0xA000 && dest < 0xC000) {
@@ -167,7 +201,6 @@ void save_ram() {
 	FILE* fp = fopen(sav_file_name, "w+");
 	if (!fp) {
 		fprintf(stderr, "Unable to save file %s\n", sav_file_name);
-		fprintf(stderr, "%s\n", strerror(errno));
 		return;
 	}
 	for (i = 0; i < mbd.ram_count; ++i) {	
@@ -182,13 +215,15 @@ void load_ram(char* file_name) {
 	strcpy(sav_file_name, file_name);
 	strcat(sav_file_name, ".sav");
 	FILE* fp = fopen(sav_file_name, "r");
-	if (!fp)
+	if (!fp) {
+		free(sav_file_name);
 		return;
+	}
 	for (i = 0; i < mbd.ram_count; ++i) {	
 		fread(mbd.ram_banks[i], mbd.ram_size, 1, fp);
 	}
 	fclose(fp);
-	//fchmod(fileno(fp), 0600);
+	free(sav_file_name);
 }
 
 /*
@@ -198,10 +233,46 @@ void load_ram(char* file_name) {
  */
 void setup_mem_banks(uint8_t *cart_mem, char* name) {
 	memset(&mbd, 0, sizeof(mbd));
-	mbd.cart_type = cart_mem[0x0147];
-	int i, rom_bank_count = 2;
+	uint8_t ct = cart_mem[0x0147];
 
-	if (mbd.cart_type == 0)
+	int i, rom_bank_count = 2;
+	mbd.mbc = NO_MBC;
+
+	switch (cart_mem[0x0147]) {
+		case 0x01:
+		case 0x02:
+		case 0x03:
+			mbd.mbc = MBC1;
+			break;
+		case 0x05:
+		case 0x06:
+			mbd.mbc = MBC2;
+			break;
+		case 0x0F:
+		case 0x10:
+		case 0x11:
+		case 0x12:
+		case 0x13:
+			mbd.mbc = MBC3;
+			break;
+		case 0x15:
+		case 0x16:
+		case 0x17:
+			mbd.mbc = MBC4;
+			break;
+		case 0x19:
+		case 0x1A:
+		case 0x1B:
+		case 0x1C:
+		case 0x1D:
+		case 0x1E:
+			mbd.mbc = MBC5;
+			break;
+		default:
+			mbd.mbc = NO_MBC;
+	}
+
+	if (!ct)
 		return;
 
 	mbd.ram_count = cart_mem[0x0149];
@@ -222,12 +293,15 @@ void setup_mem_banks(uint8_t *cart_mem, char* name) {
 	load_ram(name);
 	atexit(save_ram);
 
-
 	uint8_t rom_size = cart_mem[0x0148];
-	if (mbd.cart_type != 0x00) {
-		if (rom_size <= 6)
-			rom_bank_count = 0x1 << (rom_size + 1);
-	}
+	if (rom_size <= 7)
+		rom_bank_count = 0x1 << (rom_size + 1);
+	else if (rom_size == 0x52)
+		rom_bank_count = 72;
+	else if (rom_size == 0x53)
+		rom_bank_count = 72;
+	else if (rom_size == 0x54)
+		rom_bank_count = 96;
 
 	mbd.rom_banks = calloc(rom_bank_count, sizeof(uint8_t*));
 	uint32_t rom_ptr;

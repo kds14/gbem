@@ -211,8 +211,6 @@ void draw_scan_line(uint8_t y) {
 int gpu_tick() {
 	struct lcdc *lcdc = get_lcdc();
 	if (!lcdc->lcd_control_op) {
-		set_stat_mode(VBLANK);
-		dstate = VBLANK;
 		set_ly(0);
 		reset = 1;
 		return 0;
