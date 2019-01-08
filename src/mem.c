@@ -147,9 +147,10 @@ void set_mem(uint16_t dest, uint8_t data) {
 
 	// STAT register limits access to OAM and VRAM based on the LCD mode
 	struct statr *stat = get_stat();
-	if (dest >= 0x8000 && dest <= 0x9FFF && stat->mode_flag == 0x03)
+	struct lcdc *lcdc = get_lcdc();
+	if (dest >= 0x8000 && dest <= 0x9FFF && stat->mode_flag == 0x03 && lcdc->lcd_control_op)
 		return;
-	if (dest >= 0xFE00 && dest <= 0xFE9F && stat->mode_flag > 0x01)
+	if (dest >= 0xFE00 && dest <= 0xFE9F && stat->mode_flag > 0x01 && lcdc->lcd_control_op)
 		return;
 
 	// writing to 0xFF00 requests button input info
@@ -171,7 +172,7 @@ void set_mem(uint16_t dest, uint8_t data) {
 		uint8_t bit7 = data >> 7;
 		uint8_t old_bit7 = gb_mem[LCDC] >> 7;
 		if (bit7 != old_bit7) {
-			set_ly(0);
+			gb_mem[LY] = 0;
 		}
 	}
 
@@ -198,6 +199,10 @@ char* sav_file_name = NULL;
 
 void save_ram() {
 	int i;
+	if (sav_file_name == NULL) {
+		fprintf(stderr, "Unable to save file\n");
+		return;
+	}
 	FILE* fp = fopen(sav_file_name, "w+");
 	if (!fp) {
 		fprintf(stderr, "Unable to save file %s\n", sav_file_name);

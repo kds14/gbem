@@ -211,13 +211,15 @@ void draw_scan_line(uint8_t y) {
 int gpu_tick() {
 	struct lcdc *lcdc = get_lcdc();
 	if (!lcdc->lcd_control_op) {
-		set_ly(0);
+		gb_mem[STAT] = gb_mem[STAT] & 0xFC;
+		gb_mem[LY] = 0;
 		reset = 1;
 		return 0;
 	}
-	current_line = gb_mem[LY];
-	if (!current_line && reset) {
+	if (reset) {
 		reset = 0;
+		set_ly(0);
+		current_line = 0;
 		set_stat_mode(OAM_READ);
 		dstate = OAM_READ;
 		memset(&gtt, 0, sizeof(gtt));
@@ -240,8 +242,8 @@ int gpu_tick() {
 			break;
 		case HBLANK:
 			if (!(++gtt.hbt % HBLANK_TIME)) {
-				draw_scan_line(current_line++);
 				set_ly(current_line);
+				draw_scan_line(current_line++);
 				set_stat_mode(OAM_READ);
 				dstate = OAM_READ;
 				gtt.ort = 0;
@@ -258,14 +260,14 @@ int gpu_tick() {
 		case VBLANK:
 			if (!(++gtt.vbt % SCANLINE_TIME)) {
 				// LY still increments during VBLANK
-				set_ly(current_line + 1);
+				set_ly(current_line++);
 			}
 			// TODO: ends at 153 or 154?
 			if (current_line > FINAL_LINE) {
 				// END
 				display_render();
 				reset = 1;
-				set_ly(0);
+				current_line = 0;
 				set_stat_mode(OAM_READ);
 				dstate = OAM_READ;
 				gtt.ort = 0;
