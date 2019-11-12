@@ -3,3 +3,5 @@ build/
 *.swo
 gmon.out
 perf.data*
+
+debug

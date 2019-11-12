@@ -1,13 +1,12 @@
-TARGET=./build/gbem
+BUILD=./build
+TARGET=$(BUILD)/gbem
 SOURCES=./src/*.c
-CC=gcc
-FLAGS=-g -Wall -Werror
+CC=cl
+SDL_LIB=..\SDL2\lib\x86\*.lib
+SDL_INC=..\SDL2\include
 
 all: $(TARGET)
 
 $(TARGET):$(SOURCES)
-	mkdir -p build
-	$(CC) $(FLAGS) -o $@ $^ `sdl2-config --cflags --libs`
-
-clean:
-	rm -rf ./build
+	if not exist "$(BUILD)" mkdir build
+	$(CC) /O2 /Fe$(TARGET) /Fo$(BUILD)/ $** /I$(SDL_INC) $(SDL_LIB)

@@ -4,7 +4,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+//#include <unistd.h>
 
 // value that sprite priority can't be OAM size is less than 0xFF
 #define NO_PRIORITY 0xFFFF
